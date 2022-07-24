@@ -22,14 +22,20 @@ class MSELoss(nn.Module):
         loss_weight (float, optional): The weight of the loss. Defaults to 1.0
     """
 
-    def __init__(self, reduction='mean', loss_weight=1.0):
+    def __init__(self, reduction='mean', loss_weight=1.0, loss_name='mse_loss'):
         super().__init__()
         self.reduction = reduction
         self.loss_weight = loss_weight
+        self._loss_name = loss_name
+
+    @property
+    def loss_name(self):
+        return self._loss_name
 
     def forward(self,
                 pred,
                 target,
+                ignore_index=0,
                 weight=None,
                 avg_factor=None,
                 reduction_override=None):
