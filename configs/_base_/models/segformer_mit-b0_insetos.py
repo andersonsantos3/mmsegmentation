@@ -20,6 +20,7 @@ model = dict(
         drop_path_rate=0.1),
     decode_head=dict(
         type='SegformerHead',
+        ignore_index=255,
         in_channels=[32, 64, 160, 256],
         in_index=[0, 1, 2, 3],
         channels=256,
@@ -28,7 +29,7 @@ model = dict(
         norm_cfg=norm_cfg,
         align_corners=False,
         loss_decode=dict(
-            type='MSELoss')),
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0, avg_non_ignore=True)),
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))

@@ -40,6 +40,12 @@ def parse_args():
         help='Diretório para salvar os dados de saída. Caso já existir, os dados podem ser sobreescritos'
     )
     parser.add_argument('--int', help='Salvar a máscara com números inteiros', action='store_true')
+    parser.add_argument(
+        '--limiar',
+        help='Mantém na gaussiana apenas valores iguais ou superiores ao limiar. Valor padrão 0.0',
+        type=float,
+        default=0.0
+    )
 
     args = parser.parse_args()
     return args
@@ -94,14 +100,26 @@ def criar_mascara(imagem: Imagem) -> ndarray:
     return mascara
 
 
-def criar_mascara_int(imagem: Imagem) -> ndarray:
+def criar_mascara_int(imagem: Imagem, limiar: float) -> ndarray:
     mascara = zeros(shape=(imagem.altura, imagem.largura), dtype=float)
     for anotacao in imagem.anotacoes:
         largura_anotacao = anotacao.xmax - anotacao.xmin
         altura_anotacao = anotacao.ymax - anotacao.ymin
 
-        mascara_anotacao = zeros(shape=(altura_anotacao, largura_anotacao)) + anotacao.categoria
-        mascara[anotacao.ymin:anotacao.ymax, anotacao.xmin:anotacao.xmax] = mascara_anotacao
+        meio_x = largura_anotacao // 2
+        meio_y = altura_anotacao // 2
+
+        x = zeros(largura_anotacao)
+        y = zeros(altura_anotacao)
+        x[:meio_x] = (arange(meio_x + 1) / (meio_x + 1))[1:]
+        y[:meio_y] = (arange(meio_y + 1) / (meio_y + 1))[1:]
+        x[meio_x:] = flip(arange(len(x[meio_x:]) + 1) / len(x[meio_x:]))[:-1]
+        y[meio_y:] = flip(arange(len(y[meio_y:]) + 1) / len(y[meio_y:]))[:-1]
+
+        outer_ = outer(y, x)
+        outer_[outer_ < limiar] = 0
+        outer_[outer_ != 0] = anotacao.categoria
+        mascara[anotacao.ymin:anotacao.ymax, anotacao.xmin:anotacao.xmax] = outer_
     return mascara
 
 
@@ -156,7 +174,8 @@ def salvar_mascara_int(mascara: ndarray, caminho_destino: str) -> None:
 def main():
     args = parse_args()
 
-    criar_diretorios_saida(args.diretorio_saida)
+    # criar_diretorios_saida(args.diretorio_saida)
+    criar_diretorios_saida('{}/{}'.format(args.diretorio_saida, args.limiar))
     for arquivo_json in args.arquivos_json.split():
         with open(join(args.diretorio_jsons, arquivo_json), 'r', encoding='utf_8') as arquivo:
             print(join(args.diretorio_jsons, arquivo_json))
@@ -165,14 +184,14 @@ def main():
         imagens = listar_imagens(dados)
         for imagem in imagens:
             img = abrir_imagem(args.diretorio_imagens, imagem)
-            img.save(join(args.diretorio_saida, 'images', arquivo_json[:-5], criar_nome_imagem(imagem) + imagem.extensao))
+            img.save(join('{}/{}'.format(args.diretorio_saida, args.limiar), 'images', arquivo_json[:-5], criar_nome_imagem(imagem) + imagem.extensao))
 
             if args.int:
-                mascara = criar_mascara_int(imagem)
+                mascara = criar_mascara_int(imagem, args.limiar)
                 salvar_mascara_int(
                     mascara=mascara,
                     caminho_destino=join(
-                        args.diretorio_saida,
+                        '{}/{}'.format(args.diretorio_saida, args.limiar),
                         'annotations',
                         arquivo_json[:-5],
                         criar_nome_imagem(imagem) + '.png'
@@ -189,7 +208,7 @@ def main():
                         criar_nome_imagem(imagem) + '.tif'
                     )
                 )
-        criar_images_lists(imagens, join(args.diretorio_saida, 'imagesLists'), arquivo_json[:-5] + '.txt')
+        criar_images_lists(imagens, join('{}/{}'.format(args.diretorio_saida, args.limiar), 'imagesLists'), arquivo_json[:-5] + '.txt')
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 # dataset settings
 dataset_type = 'Insetos'
-data_root = '/home/anderson/PycharmProjects/mmsegmentation/data/insetos/5x5/0.25'
+data_root = '/home/anderson/PycharmProjects/mmsegmentation/data/insetos/20x20/0.1'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 crop_size = (512, 512)
@@ -12,7 +12,7 @@ train_pipeline = [
     dict(type='RandomFlip', prob=0.5),
     dict(type='PhotoMetricDistortion'),
     dict(type='Normalize', **img_norm_cfg),
-    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=255),
+    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=0),
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_semantic_seg']),
 ]

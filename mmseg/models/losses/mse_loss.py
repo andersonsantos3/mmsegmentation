@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from torch import argmax, float32
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -55,6 +56,10 @@ class MSELoss(nn.Module):
         Returns:
             torch.Tensor: The calculated loss
         """
+
+        pred = argmax(pred, 1).type(float32) + 1
+        pred.requires_grad = True
+
         assert reduction_override in (None, 'none', 'mean', 'sum')
         reduction = (
             reduction_override if reduction_override else self.reduction)

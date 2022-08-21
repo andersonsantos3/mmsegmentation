@@ -243,6 +243,8 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
             seg_weight = None
         seg_label = seg_label.squeeze(1)
 
+        # seg_label = seg_label.to(torch.float32)
+
         if not isinstance(self.loss_decode, nn.ModuleList):
             losses_decode = [self.loss_decode]
         else:
