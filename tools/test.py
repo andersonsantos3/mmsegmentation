@@ -296,10 +296,6 @@ def main():
             format_only=args.format_only or eval_on_format_results,
             format_args=eval_kwargs)
 
-    from numpy import unique
-    for a in results:
-        print(unique(a))
-
     rank, _ = get_dist_info()
     if rank == 0:
         if args.out:
