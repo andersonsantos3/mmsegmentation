@@ -6,7 +6,8 @@ from os.path import exists, join
 from PIL.Image import Image, fromarray, open as open_image
 from typing import DefaultDict, Dict, List, NamedTuple, Union
 
-from tifffile import imwrite
+from tifffile import imwrite as imwrite_tiff
+from mmcv.image import imread, imwrite as imwrite_mmcv
 from numpy import arange, flip, ndarray, outer, zeros, float32
 
 
@@ -52,9 +53,10 @@ def parse_args():
 
 
 def abrir_imagem(diretorio_imagem: str, imagem: Imagem) -> Image:
-    img = open_image(join(diretorio_imagem, imagem.nome + imagem.extensao))
+    img = imread(join(diretorio_imagem, imagem.nome + imagem.extensao))
     if imagem.subimagem:
-        img = img.crop(tuple(imagem.subimagem))
+        xmin, ymin, xmax, ymax = imagem.subimagem
+        img = img[ymin:ymax, xmin:xmax]
     return img
 
 
@@ -163,18 +165,16 @@ def listar_imagens(dados: Dict[str, List[Dict[str, Union[int, str]]]]) -> List[I
 
 
 def salvar_mascara(mascara: ndarray, caminho_destino: str) -> None:
-    imwrite(caminho_destino, mascara)
+    imwrite_tiff(caminho_destino, mascara)
 
 
 def salvar_mascara_int(mascara: ndarray, caminho_destino: str) -> None:
-    img = fromarray(mascara).convert('L')
-    img.save(caminho_destino)
+    imwrite_mmcv(mascara, caminho_destino, auto_mkdir=True)
 
 
 def main():
     args = parse_args()
 
-    # criar_diretorios_saida(args.diretorio_saida)
     criar_diretorios_saida('{}/{}'.format(args.diretorio_saida, args.limiar))
     for arquivo_json in args.arquivos_json.split():
         with open(join(args.diretorio_jsons, arquivo_json), 'r', encoding='utf_8') as arquivo:
@@ -184,7 +184,16 @@ def main():
         imagens = listar_imagens(dados)
         for imagem in imagens:
             img = abrir_imagem(args.diretorio_imagens, imagem)
-            img.save(join('{}/{}'.format(args.diretorio_saida, args.limiar), 'images', arquivo_json[:-5], criar_nome_imagem(imagem) + imagem.extensao))
+            imwrite_mmcv(
+                img,
+                join(
+                    '{}/{}'.format(args.diretorio_saida, args.limiar),
+                    'images',
+                    arquivo_json[:-5],
+                    criar_nome_imagem(imagem) + imagem.extensao
+                ),
+                auto_mkdir=True
+            )
 
             if args.int:
                 mascara = criar_mascara_int(imagem, args.limiar)
