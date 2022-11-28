@@ -29,7 +29,30 @@ model = dict(
         norm_cfg=norm_cfg,
         align_corners=False,
         loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0, avg_non_ignore=True)),
+            type='CrossEntropyLoss',
+            # class_weight=[  # pesos com todo o dataset
+            #     1.44263754e-01,
+            #     5.17139259e+02,
+            #     2.19240992e+01,
+            #     1.82440613e+02,
+            #     2.23583035e+02,
+            #     1.40073904e+02,
+            #     2.76751305e+02
+            # ],
+            # class_weight=[  # pesos do conjunto de treino
+            #     1.44268376e-01,
+            #     4.95711274e+02,
+            #     2.20576611e+01,
+            #     1.66404423e+02,
+            #     2.37547322e+02,
+            #     1.38480993e+02,
+            #     2.71692673e+02
+            # ],
+            use_sigmoid=False,
+            loss_weight=1.0,
+            avg_non_ignore=True
+        )
+    ),
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
