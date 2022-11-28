@@ -66,6 +66,12 @@ def parse_args():
                            'especificada, a seed irá variar de 0 até '
                            'n, com passo 1, até que a divisão ideal '
                            'seja encontrada.')
+    args.add_argument(
+        '--diferenca',
+        help='Diferença permitida entre o percentual de divisões sugerido e o percentual de divisões obtido',
+        default=0.00,
+        type=float
+    )
     args.add_argument('--mostrar_graficos', action='store_true',
                       help='Mostra os gráficos referentes às '
                            'estatísticas do conjunto de dados.')
@@ -314,7 +320,7 @@ def verificar_tamanho(tamanho: int) -> str:
     return 'grande'
 
 
-def mostrar_informacoes(treino: dict, validacao: dict, teste: dict):
+def mostrar_informacoes(treino: dict, validacao: dict, teste: dict, percentuais: list, diferenca: float):
     """
     Imprime no terminal as informações das divisões do conjunto de
     dados.
@@ -332,6 +338,8 @@ def mostrar_informacoes(treino: dict, validacao: dict, teste: dict):
     quantidade_imagens_teste = len(teste['images'])
     quantidade_anotacoes_teste = len(teste['annotations'])
 
+    dataset_valido = True
+
     total_imagens = quantidade_imagens_treino + \
                     quantidade_imagens_validacao + quantidade_imagens_teste
     df_imagens = pd.DataFrame(
@@ -346,15 +354,12 @@ def mostrar_informacoes(treino: dict, validacao: dict, teste: dict):
                  'validacao %', 'teste %', 'total %'],
         index=['imagens']
     )
-    print('O conjunto de dados possui:')
-    print(total_imagens, 'imagens')
-    print(df_imagens)
-    print()
+
+    for linha in df_imagens.iloc:
+        for coluna, percentual in zip(['treino %', 'validacao %', 'teste %'], percentuais):
+            dataset_valido &= abs(linha[coluna] - percentual) <= diferenca
 
     categorias = treino['categories']
-    print(len(categorias), 'categorias')
-    print([categoria['name'] for categoria in categorias])
-    print()
 
     dados = np.zeros((len(categorias), 8))
     informacoes_dataset = pd.DataFrame(
@@ -421,6 +426,10 @@ def mostrar_informacoes(treino: dict, validacao: dict, teste: dict):
                                                           'total']].astype(
         int)
 
+    for linha in informacoes_dataset.iloc:
+        for coluna, percentual in zip(['treino %', 'validacao %', 'teste %'], percentuais):
+            dataset_valido &= abs(linha[coluna] - percentual) <= diferenca
+
     total_anotacoes = quantidade_anotacoes_treino + \
                       quantidade_anotacoes_validacao + quantidade_anotacoes_teste
     anotacoes = pd.DataFrame(
@@ -442,47 +451,74 @@ def mostrar_informacoes(treino: dict, validacao: dict, teste: dict):
 
     )
 
-    print('Anotações por conjunto e categoria')
-    print(informacoes_dataset)
-    print()
-    print(total_anotacoes, 'anotações')
-    print(anotacoes)
-    print()
-    print('Percentual de anotaçãoes por tamanho:')
-    print('Pequeno:', round(tamanhos_geral['pequeno'] / total_anotacoes, 2))
-    print('Médio:', round(tamanhos_geral['medio'] / total_anotacoes, 2))
-    print('Grande:', round(tamanhos_geral['grande'] / total_anotacoes, 2))
-    print()
-    print('Tamanho por conjunto:')
-    print('Treino - pequeno:', round(tamanhos_conjunto['treino'][
-                                         'pequeno'] /
-                                     len(
-        treino['annotations']), 2))
-    print('Treino - médio:', round(tamanhos_conjunto['treino']['medio'] / len(
-        treino['annotations']), 2))
-    print('Treino - grande:', round(tamanhos_conjunto['treino']['grande'] / len(
-        treino['annotations']), 2))
-    print('Validação - pequeno:', round(tamanhos_conjunto['validacao'][
-                                            'pequeno'] /
+    for linha in anotacoes.iloc:
+        for coluna, percentual in zip(['treino %', 'validacao %', 'teste %'], percentuais):
+            dataset_valido &= abs(linha[coluna] - percentual) <= diferenca
+
+    dataset_valido &= tamanhos_geral['pequeno'] / total_anotacoes != 0
+    dataset_valido &= tamanhos_geral['medio'] / total_anotacoes != 0
+    dataset_valido &= tamanhos_geral['grande'] / total_anotacoes != 0
+    dataset_valido &= tamanhos_conjunto['treino']['pequeno'] / len(treino['annotations']) != 0
+    dataset_valido &= tamanhos_conjunto['treino']['medio'] / len(treino['annotations']) != 0
+    dataset_valido &= tamanhos_conjunto['treino']['grande'] / len(treino['annotations']) != 0
+    dataset_valido &= tamanhos_conjunto['validacao']['pequeno'] / len(validacao['annotations']) != 0
+    dataset_valido &= tamanhos_conjunto['validacao']['medio'] / len(validacao['annotations']) != 0
+    dataset_valido &= tamanhos_conjunto['validacao']['grande'] / len(validacao['annotations']) != 0
+    dataset_valido &= tamanhos_conjunto['teste']['pequeno'] / len(teste['annotations']) != 0
+    dataset_valido &= tamanhos_conjunto['teste']['medio'] / len(teste['annotations']) != 0
+    dataset_valido &= tamanhos_conjunto['teste']['grande'] / len(teste['annotations']) != 0
+
+    if dataset_valido:
+        print('O conjunto de dados possui:')
+        print(total_imagens, 'imagens')
+        print(df_imagens)
+        print()
+
+        print(len(categorias), 'categorias')
+        print([categoria['name'] for categoria in categorias])
+        print()
+
+        print('Anotações por conjunto e categoria')
+        print(informacoes_dataset)
+        print()
+        print(total_anotacoes, 'anotações')
+        print(anotacoes)
+        print()
+        print('Percentual de anotaçãoes por tamanho:')
+        print('Pequeno:', round(tamanhos_geral['pequeno'] / total_anotacoes, 3))
+        print('Médio:', round(tamanhos_geral['medio'] / total_anotacoes, 3))
+        print('Grande:', round(tamanhos_geral['grande'] / total_anotacoes, 3))
+        print()
+        print('Tamanho por conjunto:')
+        print('Treino - pequeno:', round(tamanhos_conjunto['treino'][
+                                             'pequeno'] /
+                                         len(
+                                             treino['annotations']), 3))
+        print('Treino - médio:', round(tamanhos_conjunto['treino']['medio'] / len(
+            treino['annotations']), 3))
+        print('Treino - grande:', round(tamanhos_conjunto['treino']['grande'] / len(
+            treino['annotations']), 3))
+        print('Validação - pequeno:', round(tamanhos_conjunto['validacao'][
+                                                'pequeno'] /
+                                            len(
+                                                validacao['annotations']), 3))
+        print('Validação - médio:', round(tamanhos_conjunto['validacao']['medio'] / len(
+            validacao['annotations']), 3))
+        print('Validação - grande:', round(tamanhos_conjunto['validacao']['grande'] / len(
+            validacao['annotations']), 3))
+        print('Teste - pequeno:', round(tamanhos_conjunto['teste']['pequeno'] /
                                         len(
-        validacao['annotations']), 2))
-    print('Validação - médio:', round(tamanhos_conjunto['validacao']['medio'] / len(
-        validacao['annotations']), 2))
-    print('Validação - grande:', round(tamanhos_conjunto['validacao']['grande'] / len(
-        validacao['annotations']), 2))
-    print('Teste - pequeno:', round(tamanhos_conjunto['teste']['pequeno'] /
-                                    len(
-        teste['annotations']), 2))
-    print('Teste - médio:', round(tamanhos_conjunto['teste']['medio'] / len(
-        teste['annotations']), 2))
-    print('Teste - grande:', round(tamanhos_conjunto['teste']['grande'] / len(
-        teste['annotations']), 2))
-    print()
+                                            teste['annotations']), 3))
+        print('Teste - médio:', round(tamanhos_conjunto['teste']['medio'] / len(
+            teste['annotations']), 3))
+        print('Teste - grande:', round(tamanhos_conjunto['teste']['grande'] / len(
+            teste['annotations']), 3))
+        print()
 
-    return informacoes_dataset
+    return informacoes_dataset, dataset_valido
 
 
-def verificar_divisoes(divisoes: tuple) -> bool:
+def verificar_divisoes(divisoes: tuple, percentuais: list, diferenca: float) -> bool:
     """
     Pergunta ao usuário se as informações do conjunto de dados estão
     de acordo com as divisões solicitadas.
@@ -491,21 +527,23 @@ def verificar_divisoes(divisoes: tuple) -> bool:
     :return: bool
     """
 
-    informacoes_dataset = mostrar_informacoes(divisoes[0], divisoes[1],
-                                              divisoes[2])
+    informacoes_dataset, dataset_valido = mostrar_informacoes(divisoes[0], divisoes[1],
+                                                              divisoes[2], percentuais, diferenca)
 
-    opcao = ''
-    while opcao != 's':
-        opcao = input('Você concorda com as divisões realizadas? '
-                      'Digite s para confirmar ou n para realizar '
-                      'uma nova divisão e tecle ENTER\n')
+    if dataset_valido:
+        opcao = ''
+        while opcao != 's':
+            opcao = input('Você concorda com as divisões realizadas? '
+                          'Digite s para confirmar ou n para realizar '
+                          'uma nova divisão e tecle ENTER\n')
 
-        if opcao == 's':
-            return True, informacoes_dataset
-        elif opcao == 'n':
-            return False, None
-        else:
-            print('Opção inválida. Tente novamente.')
+            if opcao == 's':
+                return True, informacoes_dataset
+            elif opcao == 'n':
+                return False, None
+            else:
+                print('Opção inválida. Tente novamente.')
+    return False, None
 
 
 def salvar_dataset(divisoes: tuple, dir_saida: str):
@@ -784,7 +822,7 @@ def main():
         print('seed:', seed)
         divisoes = dividir_dataset(copy.deepcopy(dataset),
                                    args.percentuais, seed)
-        resposta, informacoes_dataset = verificar_divisoes(divisoes)
+        resposta, informacoes_dataset = verificar_divisoes(divisoes, args.percentuais, args.diferenca)
         if not resposta:
             seed += 1
     salvar_dataset(divisoes, args.dir_saida)
