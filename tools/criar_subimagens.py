@@ -28,6 +28,12 @@ def arg_parse():
         type=int,
         default=1
     )
+    parser.add_argument(
+        '--diretorio_subimagens',
+        help='Diretório para salvar as subimagens. Serão salvas apenas se o diretório for informado',
+        type=str,
+        default=''
+    )
 
     args = parser.parse_args()
     return args
@@ -206,7 +212,7 @@ def salvar_json(
     )
     json_path = os.path.join(dir_dataset_subimagens, conjunto + '.json')
     with open(json_path, 'w') as json_file:
-        json.dump(dataset, json_file)
+        json.dump(dataset, json_file, indent=4)
 
 
 def criar_subimagens(dataset: dict, n_subimagens: int, dir_dataset_subimagens: str):
