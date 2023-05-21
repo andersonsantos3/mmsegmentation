@@ -20,9 +20,10 @@ class Insetos(CustomDataset):
     CLASSES = (
         'fundo',
         'Diabrotica',
-        'Euschistus_adult',
+        'Euschistus',
+        # 'Euschistus_adult',
         # 'Euschistus_mating',
-        'Euschistus_nymph',
+        # 'Euschistus_nymph',
         'Gastropoda',
         'Spodoptera'
     )
@@ -32,7 +33,7 @@ class Insetos(CustomDataset):
         [255, 0, 255],
         [255, 255, 0],
         # [0, 255, 0],
-        [255, 0, 0],
+        # [255, 0, 0],
         [0, 255, 255],
         [0, 0, 255]
     ]

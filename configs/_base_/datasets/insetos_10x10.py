@@ -1,6 +1,10 @@
 # dataset settings
 dataset_type = 'Insetos'
-data_root = '/home/anderson/PycharmProjects/mmsegmentation/data/insetos/10x10/0.1'
+versao_dataset = 'v3.0.0'
+
+# quando mudar para a versão 2.0.0, alterar também a quantidade de classes no arquivo de configuração e em insetos.py
+
+data_root = '/home/anderson/PycharmProjects/mmsegmentation/data/insetos/' + versao_dataset + '/10x10/0.1'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 crop_size = (512, 512)
@@ -49,6 +53,6 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        img_dir='images/teste',
-        ann_dir='annotations/teste',
+        img_dir='images/validacao',
+        ann_dir='annotations/validacao',
         pipeline=test_pipeline))
