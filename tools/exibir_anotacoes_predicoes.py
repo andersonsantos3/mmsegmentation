@@ -1,404 +1,148 @@
+from argparse import ArgumentParser
+from collections import defaultdict
+from json import load as load_json
 from os import listdir
 from os.path import basename, join
-from pickle import load
-from PIL.Image import open as open_image
-from PIL.ImageDraw import Draw
+from pickle import load as load_pickle
+from typing import Union
 
-from matplotlib import patches as mpatches
-from matplotlib import pyplot as plt
-from mmcv import imread, imshow
-from numpy import array, ndarray
-from skimage import data
-from skimage.color import label2rgb
-from skimage.filters import threshold_otsu
-from skimage.measure import label, regionprops
-from skimage.morphology import closing, square
-from skimage.segmentation import clear_border
+from mmcv import imread, imshow, imwrite
+import cv2
 
 
-def insetos():
-    diretorio_base = '/home/anderson/PycharmProjects/mmsegmentation/'
-    diretorio_imagens = join(diretorio_base, 'data/insetos/10x10/0.1/images/teste')
-    diretorio_anotacoes = join(diretorio_base, 'data/insetos/10x10/0.1/annotations/teste')
-    caminho_predicoes = join(diretorio_base, 'work_dirs/sem_peso_nas_classes/predicoes/10x10/0.1/resultados/best.pkl')
-
-    nomes = ['139_2015_1130_2418_1356.jpg', '139_403_2034_806_2268.jpg', '139_806_452_1209_678.jpg',
-             '140_0_226_403_452.jpg', '140_1612_1130_2015_1356.jpg', '140_1612_1356_2015_1582.jpg',
-             '140_1612_1582_2015_1808.jpg', '140_2015_1130_2418_1356.jpg', '140_3627_1130_4032_1356.jpg',
-             '140_403_1130_806_1356.jpg', '140_403_1808_806_2034.jpg', '140_403_452_806_678.jpg',
-             '140_806_452_1209_678.jpg', '148_1209_904_1612_1130.jpg', '148_1612_1130_2015_1356.jpg',
-             '148_1612_1356_2015_1582.jpg', '148_1612_452_2015_678.jpg', '148_1612_904_2015_1130.jpg',
-             '148_2821_1582_3224_1808.jpg', '148_2821_904_3224_1130.jpg', '148_3224_226_3627_452.jpg',
-             '148_3627_1808_4032_2034.jpg', '148_3627_678_4032_904.jpg', '148_806_1356_1209_1582.jpg',
-             '148_806_2034_1209_2268.jpg', '160_1209_0_1612_226.jpg', '160_1209_678_1612_904.jpg',
-             '160_1209_904_1612_1130.jpg', '160_2015_1130_2418_1356.jpg', '160_2015_1356_2418_1582.jpg',
-             '160_2821_1356_3224_1582.jpg', '160_2821_1582_3224_1808.jpg', '160_3627_1356_4032_1582.jpg',
-             '160_3627_1582_4032_1808.jpg', '160_806_904_1209_1130.jpg', '164_0_1808_403_2034.jpg',
-             '164_1612_0_2015_226.jpg', '164_2015_1130_2418_1356.jpg', '164_2015_1356_2418_1582.jpg',
-             '164_2015_904_2418_1130.jpg', '164_2821_1808_3224_2034.jpg', '164_2821_904_3224_1130.jpg',
-             '164_3224_1808_3627_2034.jpg', '164_806_678_1209_904.jpg', '164_806_904_1209_1130.jpg',
-             '167_1209_1582_1612_1808.jpg', '167_2015_1130_2418_1356.jpg', '170_0_0_403_226.jpg',
-             '170_0_226_403_452.jpg', '170_0_452_403_678.jpg', '170_1209_452_1612_678.jpg', '170_1612_0_2015_226.jpg',
-             '170_1612_1356_2015_1582.jpg', '170_2015_0_2418_226.jpg', '170_2418_1356_2821_1582.jpg',
-             '170_2418_2034_2821_2268.jpg', '170_2418_678_2821_904.jpg', '170_403_1130_806_1356.jpg',
-             '170_403_1356_806_1582.jpg', '170_403_1808_806_2034.jpg', '170_403_226_806_452.jpg',
-             '170_403_678_806_904.jpg', '170_806_226_1209_452.jpg', '171_1209_452_1612_678.jpg',
-             '171_1612_226_2015_452.jpg', '171_2015_1582_2418_1808.jpg', '171_2015_1808_2418_2034.jpg',
-             '171_2015_678_2418_904.jpg', '171_2418_2034_2821_2268.jpg', '171_2821_226_3224_452.jpg',
-             '171_806_0_1209_226.jpg', '181_0_1130_403_1356.jpg', '181_1612_0_2015_226.jpg',
-             '181_2015_1130_2418_1356.jpg', '181_2418_678_2821_904.jpg', '181_2821_1130_3224_1356.jpg',
-             '181_2821_452_3224_678.jpg', '181_2821_678_3224_904.jpg', '181_403_1130_806_1356.jpg',
-             '181_806_1130_1209_1356.jpg', '181_806_2034_1209_2268.jpg', '184_1612_1582_2015_1808.jpg',
-             '184_1612_678_2015_904.jpg', '184_2015_1582_2418_1808.jpg', '184_2418_226_2821_452.jpg',
-             '184_2821_678_3224_904.jpg', '184_403_1808_806_2034.jpg', '184_403_452_806_678.jpg',
-             '202_0_2034_403_2268.jpg', '202_1612_1130_2015_1356.jpg', '202_1612_1356_2015_1582.jpg',
-             '202_1612_2034_2015_2268.jpg', '202_1612_226_2015_452.jpg', '202_1612_904_2015_1130.jpg',
-             '202_2821_1130_3224_1356.jpg', '202_2821_904_3224_1130.jpg', '202_403_1130_806_1356.jpg',
-             '202_806_226_1209_452.jpg', '202_806_452_1209_678.jpg', '216_1612_1582_2015_1808.jpg',
-             '216_2015_1130_2418_1356.jpg', '216_2015_1356_2418_1582.jpg', '216_2015_1582_2418_1808.jpg',
-             '216_2015_226_2418_452.jpg', '216_2015_452_2418_678.jpg', '216_2418_1130_2821_1356.jpg',
-             '216_2418_1356_2821_1582.jpg', '216_3627_1130_4032_1356.jpg', '216_403_1808_806_2034.jpg',
-             '216_403_2034_806_2268.jpg', '216_806_226_1209_452.jpg', '222_1612_1130_2015_1356.jpg',
-             '222_1612_1356_2015_1582.jpg', '222_1612_1808_2015_2034.jpg', '222_1612_2034_2015_2268.jpg',
-             '222_2418_0_2821_226.jpg', '222_2418_1130_2821_1356.jpg', '222_2418_1582_2821_1808.jpg',
-             '222_2418_904_2821_1130.jpg', '222_2821_1808_3224_2034.jpg', '222_2821_452_3224_678.jpg',
-             '222_2821_678_3224_904.jpg', '222_806_226_1209_452.jpg', '223_1209_678_1612_904.jpg',
-             '223_1209_904_1612_1130.jpg', '223_1612_1356_2015_1582.jpg', '223_2015_1356_2418_1582.jpg',
-             '223_2418_1356_2821_1582.jpg', '223_2418_1582_2821_1808.jpg', '223_2821_1356_3224_1582.jpg',
-             '223_2821_1582_3224_1808.jpg', '223_3224_1582_3627_1808.jpg', '223_3627_1356_4032_1582.jpg',
-             '223_403_1582_806_1808.jpg', '223_403_1808_806_2034.jpg', '276_0_1582_403_1808.jpg',
-             '276_0_2034_403_2268.jpg', '276_1209_1582_1612_1808.jpg', '276_1209_1808_1612_2034.jpg',
-             '276_1612_904_2015_1130.jpg', '276_2015_904_2418_1130.jpg', '276_3224_1130_3627_1356.jpg',
-             '276_3224_904_3627_1130.jpg', '276_403_452_806_678.jpg', '276_806_1582_1209_1808.jpg',
-             '276_806_1808_1209_2034.jpg', '27_1612_226_2015_452.jpg', '27_2418_0_2821_226.jpg',
-             '27_2418_1130_2821_1356.jpg', '27_2418_904_2821_1130.jpg', '285_3627_904_4032_1130.jpg',
-             '285_403_0_806_226.jpg', '285_403_1808_806_2034.jpg', '285_403_226_806_452.jpg',
-             '288_1209_2034_1612_2268.jpg', '288_1612_1808_2015_2034.jpg', '288_2821_1582_3224_1808.jpg',
-             '288_2821_2034_3224_2268.jpg', '288_2821_226_3224_452.jpg', '288_403_2034_806_2268.jpg',
-             '293_1209_1130_1612_1356.jpg', '293_1209_1356_1612_1582.jpg', '293_1209_452_1612_678.jpg',
-             '293_1612_1808_2015_2034.jpg', '293_1612_2034_2015_2268.jpg', '293_2015_678_2418_904.jpg',
-             '293_2015_904_2418_1130.jpg', '293_2821_1808_3224_2034.jpg', '293_2821_678_3224_904.jpg',
-             '296_0_1808_403_2034.jpg', '296_0_226_403_452.jpg', '296_1612_678_2015_904.jpg',
-             '296_1612_904_2015_1130.jpg', '296_3224_0_3627_226.jpg', '296_403_904_806_1130.jpg', '299_0_0_403_226.jpg',
-             '299_0_1582_403_1808.jpg', '299_0_226_403_452.jpg', '299_2418_904_2821_1130.jpg',
-             '299_2821_1582_3224_1808.jpg', '299_2821_1808_3224_2034.jpg', '299_403_452_806_678.jpg',
-             '299_806_904_1209_1130.jpg', '2_0_1808_403_2034.jpg', '2_1209_1130_1612_1356.jpg',
-             '2_1209_1582_1612_1808.jpg', '2_1612_1130_2015_1356.jpg', '2_1612_1582_2015_1808.jpg',
-             '2_1612_904_2015_1130.jpg', '2_2418_1130_2821_1356.jpg', '2_2418_904_2821_1130.jpg',
-             '2_806_1130_1209_1356.jpg', '2_806_904_1209_1130.jpg', '309_1612_904_2015_1130.jpg',
-             '309_2418_678_2821_904.jpg', '309_2821_678_3224_904.jpg', '309_403_226_806_452.jpg',
-             '309_806_0_1209_226.jpg', '309_806_904_1209_1130.jpg', '313_2015_1582_2418_1808.jpg',
-             '313_3224_1808_3627_2034.jpg', '330_1612_0_2015_226.jpg', '330_1612_2034_2015_2268.jpg',
-             '330_1612_226_2015_452.jpg', '330_2015_0_2418_226.jpg', '330_2015_226_2418_452.jpg',
-             '330_2418_1356_2821_1582.jpg', '330_403_226_806_452.jpg', '334_1209_1130_1612_1356.jpg',
-             '334_2418_2034_2821_2268.jpg', '334_2821_2034_3224_2268.jpg', '334_403_0_806_226.jpg',
-             '334_403_226_806_452.jpg', '334_806_1130_1209_1356.jpg', '334_806_678_1209_904.jpg',
-             '340_0_1808_403_2034.jpg', '340_0_2034_403_2268.jpg', '340_1612_2034_2015_2268.jpg',
-             '340_1612_678_2015_904.jpg', '340_2015_1582_2418_1808.jpg', '340_2418_1356_2821_1582.jpg',
-             '340_2821_1356_3224_1582.jpg', '340_3224_1356_3627_1582.jpg', '340_3627_1356_4032_1582.jpg',
-             '340_3627_1582_4032_1808.jpg', '340_806_1130_1209_1356.jpg', '340_806_904_1209_1130.jpg',
-             '342_0_1808_403_2034.jpg', '342_0_226_403_452.jpg', '342_1612_2034_2015_2268.jpg',
-             '342_2821_904_3224_1130.jpg', '342_403_1582_806_1808.jpg', '342_403_1808_806_2034.jpg',
-             '342_403_226_806_452.jpg', '355_0_1808_403_2034.jpg', '355_0_2034_403_2268.jpg',
-             '355_2015_1130_2418_1356.jpg', '355_2015_1582_2418_1808.jpg', '355_2015_1808_2418_2034.jpg',
-             '355_2015_226_2418_452.jpg', '355_2418_452_2821_678.jpg', '355_2821_1356_3224_1582.jpg',
-             '355_3224_1356_3627_1582.jpg', '355_3224_1582_3627_1808.jpg', '374_1209_1808_1612_2034.jpg',
-             '385_2418_452_2821_678.jpg', '385_2821_904_3224_1130.jpg', '386_1209_678_1612_904.jpg',
-             '386_1612_1356_2015_1582.jpg', '386_2015_0_2418_226.jpg', '386_2015_904_2418_1130.jpg',
-             '386_2418_1582_2821_1808.jpg', '386_2821_904_3224_1130.jpg', '386_3224_678_3627_904.jpg',
-             '386_3224_904_3627_1130.jpg', '386_3627_1130_4032_1356.jpg', '386_806_678_1209_904.jpg',
-             '393_1209_1582_1612_1808.jpg', '393_2418_0_2821_226.jpg', '393_2418_1130_2821_1356.jpg',
-             '393_3627_226_4032_452.jpg', '393_3627_678_4032_904.jpg', '393_403_226_806_452.jpg',
-             '41_1612_1356_2015_1582.jpg', '41_2015_226_2418_452.jpg', '41_2015_452_2418_678.jpg',
-             '41_2418_226_2821_452.jpg', '41_2418_452_2821_678.jpg', '423_1612_2034_2015_2268.jpg',
-             '423_1612_678_2015_904.jpg', '423_2015_0_2418_226.jpg', '423_2821_678_3224_904.jpg',
-             '423_3224_0_3627_226.jpg', '423_3627_0_4032_226.jpg', '423_403_0_806_226.jpg', '423_806_0_1209_226.jpg',
-             '423_806_1356_1209_1582.jpg', '423_806_1808_1209_2034.jpg', '425_0_226_403_452.jpg',
-             '425_3627_1808_4032_2034.jpg', '430_2418_1130_2821_1356.jpg', '430_3224_1356_3627_1582.jpg',
-             '430_3224_678_3627_904.jpg', '430_403_678_806_904.jpg', '430_806_678_1209_904.jpg',
-             '430_806_904_1209_1130.jpg', '441_1612_1582_2015_1808.jpg', '441_2015_1582_2418_1808.jpg',
-             '442_1209_678_1612_904.jpg', '442_3224_0_3627_226.jpg', '442_403_1130_806_1356.jpg',
-             '442_806_1130_1209_1356.jpg', '442_806_904_1209_1130.jpg', '444_2418_678_2821_904.jpg',
-             '444_2821_452_3224_678.jpg', '444_2821_678_3224_904.jpg', '444_806_1356_1209_1582.jpg',
-             '449_2015_1130_2418_1356.jpg', '449_2015_678_2418_904.jpg', '452_0_1808_403_2034.jpg',
-             '452_0_2034_403_2268.jpg', '452_1612_1130_2015_1356.jpg', '452_2015_1582_2418_1808.jpg',
-             '452_2821_904_3224_1130.jpg', '452_403_904_806_1130.jpg', '460_0_1582_403_1808.jpg',
-             '460_1209_226_1612_452.jpg', '460_1209_452_1612_678.jpg', '460_2015_904_2418_1130.jpg',
-             '460_2418_678_2821_904.jpg', '460_2418_904_2821_1130.jpg', '460_806_1582_1209_1808.jpg',
-             '460_806_226_1209_452.jpg', '468_2418_1130_2821_1356.jpg', '468_2418_904_2821_1130.jpg',
-             '476_2821_1582_3224_1808.jpg', '476_3224_1356_3627_1582.jpg', '476_3224_1582_3627_1808.jpg',
-             '476_403_1356_806_1582.jpg', '476_403_904_806_1130.jpg', '476_806_1130_1209_1356.jpg',
-             '476_806_1356_1209_1582.jpg', '476_806_1582_1209_1808.jpg', '476_806_904_1209_1130.jpg',
-             '489_1209_1130_1612_1356.jpg', '489_2015_904_2418_1130.jpg', '489_2821_1130_3224_1356.jpg',
-             '489_2821_904_3224_1130.jpg', '497_0_1130_403_1356.jpg', '497_0_678_403_904.jpg',
-             '497_2015_1808_2418_2034.jpg', '497_2821_452_3224_678.jpg', '497_3224_0_3627_226.jpg',
-             '497_3224_1582_3627_1808.jpg', '497_3627_0_4032_226.jpg', '51_1612_1356_2015_1582.jpg',
-             '51_2418_1582_2821_1808.jpg', '536_0_1808_403_2034.jpg', '536_2418_0_2821_226.jpg',
-             '536_2418_678_2821_904.jpg', '536_2821_452_3224_678.jpg', '536_806_1582_1209_1808.jpg',
-             '538_0_1356_403_1582.jpg', '538_1209_678_1612_904.jpg', '538_1612_1356_2015_1582.jpg',
-             '538_1612_678_2015_904.jpg', '538_2015_1130_2418_1356.jpg', '538_2418_1356_2821_1582.jpg',
-             '538_2418_1582_2821_1808.jpg', '538_2821_1808_3224_2034.jpg', '538_3224_2034_3627_2268.jpg',
-             '538_3627_1356_4032_1582.jpg', '538_806_1130_1209_1356.jpg', '562_2015_1356_2418_1582.jpg',
-             '562_2418_1130_2821_1356.jpg', '562_2821_0_3224_226.jpg', '562_2821_1130_3224_1356.jpg',
-             '562_3627_226_4032_452.jpg', '562_3627_452_4032_678.jpg', '562_403_226_806_452.jpg',
-             '562_806_1582_1209_1808.jpg', '57_1612_1808_2015_2034.jpg', '57_3224_0_3627_226.jpg',
-             '583_0_678_403_904.jpg', '583_1209_452_1612_678.jpg', '583_1209_678_1612_904.jpg',
-             '583_2821_1130_3224_1356.jpg', '583_806_0_1209_226.jpg', '595_1209_1356_1612_1582.jpg',
-             '595_1209_2034_1612_2268.jpg', '595_1612_1130_2015_1356.jpg', '595_2418_2034_2821_2268.jpg',
-             '595_3224_452_3627_678.jpg', '595_3627_678_4032_904.jpg', '595_403_904_806_1130.jpg',
-             '604_1209_678_1612_904.jpg', '604_1209_904_1612_1130.jpg', '604_3627_452_4032_678.jpg',
-             '604_403_0_806_226.jpg', '606_1209_678_1612_904.jpg', '606_2015_2034_2418_2268.jpg',
-             '606_2015_226_2418_452.jpg', '606_2015_452_2418_678.jpg', '606_2015_678_2418_904.jpg',
-             '606_2821_2034_3224_2268.jpg', '606_3224_904_3627_1130.jpg', '609_0_678_403_904.jpg',
-             '609_0_904_403_1130.jpg', '609_2418_1582_2821_1808.jpg', '609_2418_1808_2821_2034.jpg',
-             '609_3627_904_4032_1130.jpg', '609_403_678_806_904.jpg', '609_403_904_806_1130.jpg',
-             '627_1612_1130_2015_1356.jpg', '627_1612_1356_2015_1582.jpg', '627_1612_452_2015_678.jpg',
-             '627_2015_1130_2418_1356.jpg', '627_2418_1808_2821_2034.jpg', '627_3224_1582_3627_1808.jpg',
-             '627_3627_2034_4032_2268.jpg', '627_806_1130_1209_1356.jpg', '627_806_1356_1209_1582.jpg',
-             '627_806_1582_1209_1808.jpg', '637_0_678_403_904.jpg', '637_0_904_403_1130.jpg',
-             '637_1209_678_1612_904.jpg', '637_1612_904_2015_1130.jpg', '637_2821_226_3224_452.jpg',
-             '637_403_678_806_904.jpg', '642_1612_0_2015_226.jpg', '642_1612_226_2015_452.jpg',
-             '642_2015_0_2418_226.jpg', '642_2015_226_2418_452.jpg', '642_2418_904_2821_1130.jpg',
-             '642_3224_1808_3627_2034.jpg', '642_3224_678_3627_904.jpg', '642_3224_904_3627_1130.jpg',
-             '642_403_1130_806_1356.jpg', '642_806_1130_1209_1356.jpg', '649_1612_226_2015_452.jpg',
-             '649_403_1130_806_1356.jpg', '649_806_1130_1209_1356.jpg', '649_806_904_1209_1130.jpg',
-             '651_1612_1582_2015_1808.jpg', '651_1612_1808_2015_2034.jpg', '651_2015_1808_2418_2034.jpg',
-             '651_403_226_806_452.jpg', '651_403_452_806_678.jpg', '658_2015_904_2418_1130.jpg',
-             '658_3224_226_3627_452.jpg', '674_1209_1130_1612_1356.jpg', '674_1209_1356_1612_1582.jpg',
-             '674_2015_678_2418_904.jpg', '674_2418_0_2821_226.jpg', '674_2418_1130_2821_1356.jpg',
-             '674_2418_904_2821_1130.jpg', '674_3224_1130_3627_1356.jpg', '686_1209_678_1612_904.jpg',
-             '686_1612_1130_2015_1356.jpg', '686_1612_1808_2015_2034.jpg', '686_1612_678_2015_904.jpg',
-             '686_2015_1356_2418_1582.jpg', '686_2015_1582_2418_1808.jpg', '686_3224_1130_3627_1356.jpg',
-             '686_3224_678_3627_904.jpg', '686_3224_904_3627_1130.jpg', '686_806_1356_1209_1582.jpg',
-             '689_0_226_403_452.jpg', '689_0_452_403_678.jpg', '689_2015_2034_2418_2268.jpg',
-             '689_2015_678_2418_904.jpg', '689_2418_678_2821_904.jpg', '689_3224_452_3627_678.jpg',
-             '689_3224_678_3627_904.jpg', '697_0_2034_403_2268.jpg', '697_1209_678_1612_904.jpg',
-             '697_1209_904_1612_1130.jpg', '697_2418_1130_2821_1356.jpg', '697_806_678_1209_904.jpg',
-             '701_1209_1582_1612_1808.jpg', '701_1612_1582_2015_1808.jpg', '701_1612_226_2015_452.jpg',
-             '701_3224_1808_3627_2034.jpg', '701_3627_1808_4032_2034.jpg', '701_403_2034_806_2268.jpg',
-             '705_1209_1130_1612_1356.jpg', '705_1209_1356_1612_1582.jpg', '705_3627_2034_4032_2268.jpg',
-             '705_806_1130_1209_1356.jpg', '709_0_226_403_452.jpg', '709_1612_226_2015_452.jpg',
-             '709_2015_1130_2418_1356.jpg', '709_403_1582_806_1808.jpg', '709_403_1808_806_2034.jpg',
-             '709_806_678_1209_904.jpg', '716_0_904_403_1130.jpg', '716_1612_1582_2015_1808.jpg',
-             '716_1612_1808_2015_2034.jpg', '716_2015_1582_2418_1808.jpg', '716_2015_1808_2418_2034.jpg',
-             '716_806_904_1209_1130.jpg', '723_1209_1130_1612_1356.jpg', '723_1209_1582_1612_1808.jpg',
-             '723_1209_2034_1612_2268.jpg', '723_2015_678_2418_904.jpg', '723_2418_678_2821_904.jpg',
-             '723_2821_1130_3224_1356.jpg', '723_2821_2034_3224_2268.jpg', '723_2821_226_3224_452.jpg',
-             '723_3224_1582_3627_1808.jpg', '723_3224_1808_3627_2034.jpg', '723_3627_1808_4032_2034.jpg',
-             '727_1612_1130_2015_1356.jpg', '727_2015_1356_2418_1582.jpg', '727_2821_1356_3224_1582.jpg',
-             '727_2821_1808_3224_2034.jpg', '727_3224_1582_3627_1808.jpg', '740_1612_1356_2015_1582.jpg',
-             '740_1612_1808_2015_2034.jpg', '740_2015_1356_2418_1582.jpg', '740_2821_1356_3224_1582.jpg',
-             '740_3627_1356_4032_1582.jpg', '740_3627_1582_4032_1808.jpg', '740_3627_452_4032_678.jpg',
-             '740_806_1582_1209_1808.jpg', '743_2418_226_2821_452.jpg', '743_3627_678_4032_904.jpg',
-             '743_3627_904_4032_1130.jpg', '743_806_1356_1209_1582.jpg', '743_806_1582_1209_1808.jpg',
-             '772_1209_0_1612_226.jpg', '772_1209_226_1612_452.jpg', '772_1612_0_2015_226.jpg',
-             '772_2015_1130_2418_1356.jpg', '772_3627_1130_4032_1356.jpg', '772_3627_904_4032_1130.jpg',
-             '772_806_0_1209_226.jpg', '77_0_226_403_452.jpg', '77_1612_1356_2015_1582.jpg', '77_1612_226_2015_452.jpg',
-             '77_2015_904_2418_1130.jpg', '77_2418_904_2821_1130.jpg', '77_2821_1130_3224_1356.jpg',
-             '77_2821_904_3224_1130.jpg', '77_3224_226_3627_452.jpg', '77_3224_452_3627_678.jpg',
-             '77_3627_1356_4032_1582.jpg', '77_3627_1582_4032_1808.jpg', '77_403_0_806_226.jpg',
-             '77_403_226_806_452.jpg', '77_806_0_1209_226.jpg', '77_806_2034_1209_2268.jpg', '780_1209_0_1612_226.jpg',
-             '780_1612_1808_2015_2034.jpg', '780_2015_1808_2418_2034.jpg', '780_2015_678_2418_904.jpg',
-             '780_2821_1356_3224_1582.jpg', '780_3224_1582_3627_1808.jpg', '780_3224_1808_3627_2034.jpg',
-             '780_3627_1582_4032_1808.jpg', '780_3627_1808_4032_2034.jpg', '780_806_1356_1209_1582.jpg',
-             '790_1209_678_1612_904.jpg', '790_1209_904_1612_1130.jpg', '790_2015_1130_2418_1356.jpg',
-             '790_2821_2034_3224_2268.jpg', '792_0_0_403_226.jpg', '792_0_1808_403_2034.jpg', '792_1612_0_2015_226.jpg',
-             '792_1612_1356_2015_1582.jpg', '792_1612_904_2015_1130.jpg', '792_2015_1356_2418_1582.jpg',
-             '792_2015_1582_2418_1808.jpg', '792_2821_1808_3224_2034.jpg', '792_403_1808_806_2034.jpg',
-             '798_1209_2034_1612_2268.jpg', '798_1612_452_2015_678.jpg', '798_2015_1356_2418_1582.jpg',
-             '798_2015_226_2418_452.jpg', '798_2821_2034_3224_2268.jpg', '798_3627_0_4032_226.jpg',
-             '798_3627_678_4032_904.jpg', '798_806_452_1209_678.jpg', '798_806_904_1209_1130.jpg',
-             '806_1209_1130_1612_1356.jpg', '806_1612_452_2015_678.jpg', '806_2418_1356_2821_1582.jpg',
-             '806_2418_1808_2821_2034.jpg', '806_2821_904_3224_1130.jpg', '806_3224_1130_3627_1356.jpg',
-             '806_3224_904_3627_1130.jpg', '810_1209_1130_1612_1356.jpg', '810_1209_1808_1612_2034.jpg',
-             '810_2015_1582_2418_1808.jpg', '810_2418_226_2821_452.jpg', '810_2418_452_2821_678.jpg',
-             '810_2821_0_3224_226.jpg', '815_1612_1130_2015_1356.jpg', '815_1612_1356_2015_1582.jpg',
-             '815_2015_904_2418_1130.jpg', '815_3627_226_4032_452.jpg', '815_3627_452_4032_678.jpg',
-             '817_2418_1130_2821_1356.jpg', '817_3224_1356_3627_1582.jpg', '817_3224_1582_3627_1808.jpg',
-             '817_403_1356_806_1582.jpg', '817_806_1356_1209_1582.jpg', '827_1209_1356_1612_1582.jpg',
-             '827_1612_0_2015_226.jpg', '827_2418_1130_2821_1356.jpg', '827_2418_1356_2821_1582.jpg',
-             '827_2418_1582_2821_1808.jpg', '827_2821_904_3224_1130.jpg', '827_3224_1130_3627_1356.jpg',
-             '827_3627_0_4032_226.jpg', '827_3627_2034_4032_2268.jpg', '845_1612_0_2015_226.jpg',
-             '845_1612_226_2015_452.jpg', '845_2418_1130_2821_1356.jpg', '845_2418_904_2821_1130.jpg',
-             '845_2821_678_3224_904.jpg', '845_2821_904_3224_1130.jpg', '845_3627_0_4032_226.jpg',
-             '845_806_678_1209_904.jpg', '846_1209_1356_1612_1582.jpg', '846_2015_1130_2418_1356.jpg',
-             '846_2015_2034_2418_2268.jpg', '846_2015_904_2418_1130.jpg', '846_2418_904_2821_1130.jpg',
-             '851_0_1130_403_1356.jpg', '851_1612_1808_2015_2034.jpg', '851_2821_2034_3224_2268.jpg',
-             '857_1612_2034_2015_2268.jpg', '857_2821_1356_3224_1582.jpg', '857_2821_226_3224_452.jpg',
-             '857_2821_452_3224_678.jpg', '857_3224_1130_3627_1356.jpg', '869_1209_904_1612_1130.jpg',
-             '869_1612_0_2015_226.jpg', '869_1612_1808_2015_2034.jpg', '869_2418_1130_2821_1356.jpg',
-             '869_2821_1130_3224_1356.jpg', '869_3224_1582_3627_1808.jpg', '869_3224_226_3627_452.jpg',
-             '869_3224_452_3627_678.jpg', '870_1612_1130_2015_1356.jpg', '870_2015_1130_2418_1356.jpg',
-             '870_3224_904_3627_1130.jpg', '870_403_1808_806_2034.jpg', '894_2821_1582_3224_1808.jpg',
-             '894_2821_1808_3224_2034.jpg', '894_403_1808_806_2034.jpg', '894_403_2034_806_2268.jpg',
-             '894_806_1356_1209_1582.jpg', '894_806_1582_1209_1808.jpg', '913_1209_1130_1612_1356.jpg',
-             '913_1209_904_1612_1130.jpg', '918_3224_452_3627_678.jpg', '918_3627_1130_4032_1356.jpg',
-             '918_403_1130_806_1356.jpg', '918_806_1808_1209_2034.jpg', '930_403_1130_806_1356.jpg',
-             '930_806_904_1209_1130.jpg', '932_1612_1130_2015_1356.jpg', '932_1612_904_2015_1130.jpg',
-             '932_3224_2034_3627_2268.jpg', '932_3627_2034_4032_2268.jpg', '933_1612_904_2015_1130.jpg',
-             '933_2821_1130_3224_1356.jpg', '933_2821_1356_3224_1582.jpg', '933_2821_904_3224_1130.jpg',
-             '933_3224_1130_3627_1356.jpg', '933_3224_1356_3627_1582.jpg', '939_1209_0_1612_226.jpg',
-             '939_1209_226_1612_452.jpg', '939_1612_1130_2015_1356.jpg', '939_1612_2034_2015_2268.jpg',
-             '939_403_0_806_226.jpg', '939_403_452_806_678.jpg', '939_403_678_806_904.jpg', '943_1209_0_1612_226.jpg',
-             '943_1209_226_1612_452.jpg', '943_2015_2034_2418_2268.jpg', '943_2418_1356_2821_1582.jpg',
-             '943_2418_1582_2821_1808.jpg', '943_2821_1356_3224_1582.jpg', '973_1612_904_2015_1130.jpg',
-             '973_2015_1582_2418_1808.jpg', '973_2015_1808_2418_2034.jpg', '973_2015_904_2418_1130.jpg',
-             '973_3224_2034_3627_2268.jpg', '973_3627_226_4032_452.jpg', '982_0_1130_403_1356.jpg',
-             '982_0_1356_403_1582.jpg', '982_1612_1356_2015_1582.jpg', '982_3224_1130_3627_1356.jpg',
-             '982_3627_1130_4032_1356.jpg', '982_3627_904_4032_1130.jpg', '986_1209_1356_1612_1582.jpg',
-             '986_1209_1582_1612_1808.jpg', '986_2015_1582_2418_1808.jpg', '986_3627_452_4032_678.jpg',
-             '986_3627_678_4032_904.jpg', '986_806_1130_1209_1356.jpg']
-    nomes = [nome.removesuffix('.jpg') for nome in nomes]
-
-    imagens = [join(diretorio_imagens, nome + '.jpg') for nome in nomes]
-    anotacoes = [join(diretorio_anotacoes, nome + '.png') for nome in nomes]
-    predicoes = obter_predicoes(caminho_predicoes)
-    for imagem, anotacao, predicao in zip(imagens, anotacoes, predicoes):
-        # im = open_image(imagem)
-        print(basename(imagem))
-        if basename(imagem) == '815.jpg':
-            im = imread(imagem, flag='unchanged')
-            import cv2
-            cv2.imshow('815.jpg', im)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-        continue
-
-        ann = array(open_image(anotacao))
-
-        # if basename(imagem) == '2_806_1130_1209_1356.jpg':
-        # array_list = [im, ann, predicao]
-        # fig, axes = plt.subplots(nrows=3, ncols=1)
-        # for j in range(3):
-        #     axes[j].imshow(array_list[j], interpolation='nearest')
-        #     axes[j].axis('off')
-        # plt.gca().set_axis_off()
-        # plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
-        # plt.margins(0, 0)
-        # plt.gca().xaxis.set_major_locator(plt.NullLocator())
-        # plt.gca().yaxis.set_major_locator(plt.NullLocator())
-        # plt.show()
-        # plt.close()
-
-        # thresh_ann = threshold_otsu(ann)
-        # thresh_pred = threshold_otsu(predicao)
-
-        bw_ann = closing(ann > 0, square(3))
-        bw_pred = closing(predicao > 0, square(3))
-
-        label_image_ann = label(bw_ann)
-        label_image_pred = label(bw_pred)
-
-        # fig, ax = plt.subplots(figsize=(10, 6))
-        # ax.imshow(label_image_ann)
-        #
-        # for region in regionprops(label_image_ann):
-        #     # take regions with large enough areas
-        #     if region.area >= 100:
-        #         # draw rectangle around segmented coins
-        #         minr, minc, maxr, maxc = region.bbox
-        #         print(region.bbox)
-        #         rect = mpatches.Rectangle((minc, minr), maxc - minc, maxr - minr,
-        #                                   fill=False, edgecolor='blue', linewidth=3)
-        #         ax.add_patch(rect)
-        # ax.set_axis_off()
-        # plt.tight_layout()
-        # plt.show()
-
-        # print()
-        # for region in regionprops(label_image_pred):
-        #     # take regions with large enough areas
-        #     if region.area >= 100:
-        #         # draw rectangle around segmented coins
-        #         minr, minc, maxr, maxc = region.bbox
-        #         print(region.bbox)
-        #         rect = mpatches.Rectangle((minc, minr), maxc - minc, maxr - minr,
-        #                                   fill=False, edgecolor='red', linewidth=2)
-        #         ax.add_patch(rect)
-        #
-        # ax.set_axis_off()
-        # plt.tight_layout()
-        # plt.show()
-        # exit(0)
-
-        draw = Draw(im)
-        for region_ann in regionprops(label_image_ann):
-            ymin_ann, xmin_ann, ymax_ann, xmax_ann = region_ann.bbox  # y e x invertidos
-            draw.rectangle(xy=(xmin_ann, ymin_ann, xmax_ann, ymax_ann), outline='blue', width=3)
-        for region_pred in regionprops(label_image_pred):
-            ymin_pred, xmin_pred, ymax_pred, xmax_pred = region_pred.bbox
-            draw.rectangle(xy=(xmin_pred, ymin_pred, xmax_pred, ymax_pred), outline='red', width=3)
-
-        # im.show()
-        # plt.imshow(im)
-        # plt.show()
-        im.save(fp=join('/home/anderson/Imagens/predicoes', basename(imagem)))
+diretorio_imagens: str = None
 
 
-def obter_predicoes(caminho_predicoes: str) -> ndarray:
-    with open(caminho_predicoes, 'rb') as arquivo:
-        predicoes = load(arquivo)
-    return predicoes
+def parse_args():
+    parser = ArgumentParser(description='Argumentos para exibir anotações e predições')
+
+    parser.add_argument('diretorio_imagens', help='Diretório até as imagens inteiras')
+    parser.add_argument('caminho_anotacoes', help='Caminho até o arquivo json com as anotações inteiras')
+    parser.add_argument(
+        'caminho_anotacoes_subimagens',
+        help='Caminho até o arquivo json com as anotações em subimagens'
+    )
+    parser.add_argument(
+        'caminho_predicoes_segmentacao',
+        help='Caminho até o arquivo json com as predições da segmentação transformadas em bbox'
+    )
+    parser.add_argument('caminho_predicoes_deteccao', help='Caminho até o arquivo json com as predições de detecção')
+
+    args = parser.parse_args()
+    return args
 
 
-def tutorial():
-    image = data.coins()
-    thresh = threshold_otsu(image)
-    bw = closing(image > thresh, square(3))
-    cleared = clear_border(bw)
-    label_image = label(cleared)
-    image_label_overlay = label2rgb(label_image, image=image, bg_label=0)
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.imshow(image_label_overlay)
-    for region in regionprops(label_image):
-        # take regions with large enough areas
-        if region.area >= 100:
-            # draw rectangle around segmented coins
-            minr, minc, maxr, maxc = region.bbox
-            rect = mpatches.Rectangle((minc, minr), maxc - minc, maxr - minr, fill=False, edgecolor='red', linewidth=2)
-            ax.add_patch(rect)
-    ax.set_axis_off()
-    plt.tight_layout()
-    plt.title('deteccoes')
-    plt.show()
-    plt.close()
+def exibir(
+        imagens: list[str],
+        anotacoes_imagens: dict,
+        anotacoes_subimagens: dict,
+        predicoes_segmentacao: dict,
+        predicoes_deteccao: list
+) -> None:
+    id_file_name_imagem = {
+        imagem['id']: imagem['file_name'].removesuffix('.jpg')
+        for imagem in anotacoes_imagens['images']
+    }
+
+    imagens_por_nome = defaultdict(dict)
+    for imagem in imagens:
+        nome_imagem = basename(imagem).removesuffix('.jpg')
+        imagens_por_nome[nome_imagem] = dict(anotacoes=list(), predicoes_segmentacao=list(), predicoes_deteccao=list())
+
+    for anotacao in anotacoes_imagens['annotations']:
+        image_id = anotacao['image_id']
+        bbox = anotacao['bbox']
+        category_id = anotacao['category_id']
+        nome_da_imagem = id_file_name_imagem[image_id]
+        imagens_por_nome[nome_da_imagem]['anotacoes'].append(dict(bbox=bbox, category_id=category_id))
+
+    for predicao in predicoes_segmentacao:
+        image_id = predicao['image_id']
+        bbox = predicao['bbox']
+        category_id = predicao['category_id']
+        nome_da_imagem = id_file_name_imagem[image_id]
+        imagens_por_nome[nome_da_imagem]['predicoes_segmentacao'].append(dict(bbox=bbox, category_id=category_id))
+
+    assert len(anotacoes_subimagens['images']) == len(predicoes_deteccao)
+    alinhar_predicoes_deteccao(imagens_por_nome, predicoes_deteccao)
+
+    for nome_imagem in imagens_por_nome:
+        if imagens_por_nome[nome_imagem]['anotacoes'] \
+                or imagens_por_nome[nome_imagem]['predicoes_segmentacao'] \
+                or imagens_por_nome[nome_imagem]['predicoes_deteccao']:
+            caminho_imagem = join(diretorio_imagens, nome_imagem + '.jpg')
+            im = imread(caminho_imagem)
+
+            for anotacao in imagens_por_nome[nome_imagem]['anotacoes']:
+                bbox = anotacao['bbox']
+                category_id = anotacao['category_id']
+                im = cv2.rectangle(im, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+
+            for predicao in imagens_por_nome[nome_imagem]['predicoes_segmentacao']:
+                bbox = predicao['bbox']
+                bbox = [bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]]
+                category_id = anotacao['category_id']
+                im = cv2.rectangle(im, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 0, 255), 2)
+
+            for predicao in imagens_por_nome[nome_imagem]['predicoes_deteccao']:
+                xmin, ymin, xmax, ymax = predicao['bbox']
+                category_id = anotacao['category_id']
+                im = cv2.rectangle(im, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
+
+            # largura = int(im.shape[1] * 0.4)
+            # altura = int(im.shape[0] * 0.4)
+            # dim = (largura, altura)
+            # im = cv2.resize(im, dim, interpolation=cv2.INTER_AREA)
+
+            # imshow(im, nome_imagem)
+            base = '/home/anderson/PycharmProjects/mmsegmentation/work_dirs/v3.0.0/b3/ann_seg_bbox'
+            imwrite(im, join(base, nome_imagem + '.jpg'))
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
 
 
-def tutorial_pil():
-    diretorio_base = '/home/anderson/PycharmProjects/mmsegmentation/data/insetos/10x10/0.1'
-    caminho_imagem = join(diretorio_base, 'images/teste/2_0_1808_403_2034.jpg')
-    caminho_anotacao = join(diretorio_base, 'annotations/teste/2_0_1808_403_2034.png')
+def alinhar_predicoes_deteccao(imagens_por_nome, predicoes_deteccao):
+    for nome_imagem, predicoes in predicoes_deteccao.items():
+        nome_imagem = nome_imagem.removesuffix('.jpg')
+        subimagem = list(map(int, nome_imagem.split('_')[1:]))
+        nome_imagem = nome_imagem.split('_')[0]
+        for category_id, predicoes_da_classe in enumerate(predicoes, start=1):
+            for xmin, ymin, xmax, ymax, score in predicoes_da_classe:
+                if score >= 0.7:
+                    bbox = list(map(
+                        int,
+                        [xmin + subimagem[0], ymin + subimagem[1], xmax + subimagem[0], ymax + subimagem[1]]
+                    ))
+                    imagens_por_nome[nome_imagem]['predicoes_deteccao'].append(dict(
+                        bbox=bbox, category_id=category_id
+                    ))
 
-    imagem = array(open_image(caminho_imagem))
-    anotacao = array(open_image(caminho_anotacao))
 
-    thresh = threshold_otsu(anotacao)
-    bw = closing(anotacao > 0, square(3))
+def ler_json(caminho_arquivo: str) -> Union[dict, list]:
+    with open(caminho_arquivo, 'r', encoding='utf_8') as arquivo:
+        dados = load_json(arquivo)
+    return dados
 
-    label_image = label(bw)
-    image_label_overlay = label2rgb(label_image, image=imagem, bg_label=0)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.imshow(image_label_overlay)
-
-    for region in regionprops(label_image):
-        # take regions with large enough areas
-        if region.area >= 100:
-            # draw rectangle around segmented coins
-            minr, minc, maxr, maxc = region.bbox
-            rect = mpatches.Rectangle((minc, minr), maxc - minc, maxr - minr, fill=False, edgecolor='red', linewidth=2)
-            ax.add_patch(rect)
-
-    ax.set_axis_off()
-    plt.title('detecção')
-    plt.tight_layout()
-    plt.show()
+def ler_pickle(caminho_arquivo: str) -> list:
+    with open(caminho_arquivo, 'rb') as arquivo:
+        dados = load_pickle(arquivo)
+    return dados
 
 
 def main():
-    # tutorial()
-    # tutorial_pil()
-    insetos()
+    global diretorio_imagens
+
+    args = parse_args()
+    diretorio_imagens = args.diretorio_imagens
+
+    imagens = [join(diretorio_imagens, imagem) for imagem in listdir(diretorio_imagens) if imagem.endswith('.jpg')]
+    anotacoes = ler_json(args.caminho_anotacoes)
+    anotacoes_subimagens = ler_json(args.caminho_anotacoes_subimagens)
+    predicoes_segmentacao = ler_json(args.caminho_predicoes_segmentacao)
+    predicoes_deteccao = ler_json(args.caminho_predicoes_deteccao)
+
+    exibir(imagens, anotacoes, anotacoes_subimagens, predicoes_segmentacao, predicoes_deteccao)
 
 
 if __name__ == '__main__':
