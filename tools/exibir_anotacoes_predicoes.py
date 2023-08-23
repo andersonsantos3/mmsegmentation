@@ -63,7 +63,9 @@ def exibir(
         nome_da_imagem = id_file_name_imagem[image_id]
         imagens_por_nome[nome_da_imagem]['predicoes_segmentacao'].append(dict(bbox=bbox, category_id=category_id))
 
-    assert len(anotacoes_subimagens['images']) == len(predicoes_deteccao)
+    assert len(anotacoes_subimagens['images']) == len(predicoes_deteccao), '{}, {}'.format(
+        len(anotacoes_subimagens['images']), len(predicoes_deteccao)
+    )
     alinhar_predicoes_deteccao(imagens_por_nome, predicoes_deteccao)
 
     for nome_imagem in imagens_por_nome:
