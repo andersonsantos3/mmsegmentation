@@ -63,6 +63,7 @@ def agrupar_anotacoes_por_nome_da_imagem(anotacoes: dict) -> dict:
 
         if tipo == 'det':
             file_name = images_por_id[image_id]['file_name'].removesuffix('.jpg')
+            nome_imagem = file_name
             if not imagem_inteira:
                 subimagem = '_'.join(map(str, images_por_id[image_id]['subimagem']))
                 nome_imagem = file_name + '_' + subimagem + '.jpg'
