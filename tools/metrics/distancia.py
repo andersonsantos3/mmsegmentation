@@ -703,7 +703,7 @@ def main():
     global tipo
 
     args = parse_args()
-    tipo = args.imagem_inteira
+    imagem_inteira = args.imagem_inteira
 
     CATEGORIAS = tuple(range(1, args.quantidade_de_categorias + 1))
 
