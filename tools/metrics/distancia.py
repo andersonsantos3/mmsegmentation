@@ -296,7 +296,6 @@ def unir_predicoes(predicoes: dict, distancia_area_de_uniao: int, distancia_dete
     if tipo == 'det':
         imagens = defaultdict(list)
         for subimagem, deteccoes in predicoes.items():
-            # armazena detecções da imagem após aplicar batched_nms em cada subimagem
             boxes = list()
             labels = list()
             scores = list()
@@ -306,6 +305,22 @@ def unir_predicoes(predicoes: dict, distancia_area_de_uniao: int, distancia_dete
                         boxes.append(deteccao[:4])
                         labels.append(label)
                         scores.append(deteccao[-1])
+
+            # descarta boxes com a mesma localização, mantendo apenas a que possui maior probabilidade
+            ids_to_delete = list()
+            for i in range(len(boxes) - 1):
+                x1, y1, x2, y2 = boxes[i]
+                for j in range(i + 1, len(boxes)):
+                    x1_, y1_, x2_, y2_ = boxes[j]
+                    if x1 == x1_ and y1 == y1_ and x2 == x2_ and y2 == y2_:
+                        if scores[i] > scores[j]:
+                            ids_to_delete.append(j)
+                        elif scores[j] > scores[i]:
+                            ids_to_delete.append(i)
+            if ids_to_delete:
+                boxes = [box for i, box in enumerate(boxes) if i not in ids_to_delete]
+                labels = [label for i, label in enumerate(labels) if i not in ids_to_delete]
+                scores = [score for i, score in enumerate(scores) if i not in ids_to_delete]
 
             # aplica batched_nms em cada subimagem e retorna os índices a serem mantidas
             keep_idx = batched_nms(
