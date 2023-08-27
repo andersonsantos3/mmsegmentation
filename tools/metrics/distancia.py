@@ -729,6 +729,7 @@ def main():
     filtrar_predicoes_por_score(predicoes_deteccao, args.limiar_score)
 
     if imagem_inteira:
+        anotacoes_subimagens = carregar_json(args.caminho_anotacoes_imagens)
         predicoes_deteccao = unir_predicoes(predicoes_deteccao, args.distancia_area_de_uniao, args.distancia_deteccoes)
 
     taxa_de_acerto_geral = calcular_taxa_de_acerto_geral(
