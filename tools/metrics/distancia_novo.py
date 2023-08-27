@@ -41,7 +41,7 @@ def obter_anotacoes_por_imagem_id(anotacoes: dict) -> dict:
     return annotations
 
 
-def obter_predicoes_por_imagem_id(predicoes: dict) -> dict:
+def obter_predicoes_por_imagem_id(predicoes: list) -> dict:
     predictions = defaultdict(list)
     for pred in predicoes:
         predictions[pred['image_id']].append(pred)
