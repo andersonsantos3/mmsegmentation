@@ -2,6 +2,35 @@ from json import load
 from os import environ
 from typing import Union
 
+from torch import float32, int64, tensor
+from torchvision.ops import batched_nms
+
+
+def aplicar_batched_nms(predicoes: dict) -> None:
+    for chave, valor in predicoes.items():
+        boxes = list()
+        labels = list()
+        scores = list()
+        for categoria in range(len(valor)):
+            if valor[categoria]:
+                boxes += [box[:-1] for box in valor[categoria]]
+                labels += [categoria] * len(valor[categoria])
+                scores += [box[-1] for box in valor[categoria]]
+        keep_idx = batched_nms(
+            tensor(boxes, dtype=float32),
+            tensor(scores, dtype=float32),
+            tensor(labels, dtype=int64),
+            0.3
+        ).numpy().tolist()
+        boxes = [boxes[idx] for idx in keep_idx]
+        labels = [labels[idx] for idx in keep_idx]
+        scores = [scores[idx] for idx in keep_idx]
+
+        predicoes_ = [[] for _ in range(len(valor))]
+        for box, label, score in zip(boxes, labels, scores):
+            predicoes_[label] += [[box] + [score]]
+        predicoes[chave] = predicoes_
+
 
 def carregar_json(caminho_arquivo: str) -> Union[dict, list]:
     with open(caminho_arquivo, 'r', encoding='utf_8') as arquivo:
@@ -47,6 +76,7 @@ def main():
 
     remover_predicoes_com_score_baixo(deteccoes_subimagens)
     remover_predicoes_com_a_mesma_localizacao(deteccoes_subimagens)
+    aplicar_batched_nms(deteccoes_subimagens)
 
 
 if __name__ == '__main__':
