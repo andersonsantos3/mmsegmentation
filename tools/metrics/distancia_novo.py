@@ -32,10 +32,34 @@ def aplicar_batched_nms(predicoes: dict) -> None:
         predicoes[chave] = predicoes_
 
 
+def calcular_metricas_nas_subimagens(anotacoes_subimagens: dict, deteccoes_subimagens) -> None:
+    anotacoes = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
+
+
 def carregar_json(caminho_arquivo: str) -> Union[dict, list]:
     with open(caminho_arquivo, 'r', encoding='utf_8') as arquivo:
         dados = load(arquivo)
     return dados
+
+
+def converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens: dict) -> dict:
+    anotacoes_padronizadas = dict()
+    anotacoes_padronizadas_por_id_da_imagem = dict()
+    for imagem in anotacoes_subimagens['images']:
+        nome_da_imagem = ''.join(imagem['file_name'].split('.')[:-1])
+        extensao_da_imagem = imagem['file_name'].split('.')[-1]
+        subimagem = '_'.join(map(str, imagem['subimagem']))
+        chave = f'{nome_da_imagem}_{subimagem}.{extensao_da_imagem}'
+        anotacoes_padronizadas[chave] = [[] for _ in range(len(anotacoes_subimagens['categories']))]
+        anotacoes_padronizadas_por_id_da_imagem[imagem['id']] = chave
+
+    for anotacao in anotacoes_subimagens['annotations']:
+        id_da_imagem = anotacao['image_id']
+        categoria_da_anotacao = anotacao['category_id']
+        bbox = anotacao['bbox']
+        subimagem = anotacoes_padronizadas_por_id_da_imagem[id_da_imagem]
+        anotacoes_padronizadas[subimagem][categoria_da_anotacao - 1].append(bbox)
+    return anotacoes_padronizadas
 
 
 def remover_predicoes_com_a_mesma_localizacao(predicoes: dict) -> None:
@@ -77,6 +101,8 @@ def main():
     remover_predicoes_com_score_baixo(deteccoes_subimagens)
     remover_predicoes_com_a_mesma_localizacao(deteccoes_subimagens)
     aplicar_batched_nms(deteccoes_subimagens)
+
+    calcular_metricas_nas_subimagens(anotacoes_subimagens, deteccoes_subimagens)
 
 
 if __name__ == '__main__':
