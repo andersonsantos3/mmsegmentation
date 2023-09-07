@@ -48,6 +48,25 @@ def calcular_distancia(
     return sqrt((ponto_b[0] - ponto_a[0]) ** 2 + (ponto_b[1] - ponto_a[1]) ** 2)
 
 
+def calcular_metricas_nas_subimagens_com_categoria(anotacoes_subimagens: dict, deteccoes_subimagens) -> None:
+    anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
+    percentual_de_acerto_por_subimagem = list()
+    for nome_imagem, anotacoes in anotacoes_convertidas.items():
+        predicoes = deteccoes_subimagens.get(nome_imagem)
+        if existe_bbox(anotacoes) and existe_bbox(predicoes):
+            percentual_de_acerto = calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes, predicoes)
+            percentual_de_acerto_por_subimagem.append(percentual_de_acerto)
+        elif existe_bbox(anotacoes) and not existe_bbox(predicoes):
+            percentual_de_acerto_por_subimagem.append(0)
+        elif not existe_bbox(anotacoes) and not existe_bbox(predicoes):
+            percentual_de_acerto_por_subimagem.append(1)
+        elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
+            percentual_de_acerto_por_subimagem.append(0)
+    print('Pontuação nas subimagens considerando localização e categorias')
+    print(mean(percentual_de_acerto_por_subimagem).item())
+    print()
+
+
 def calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, deteccoes_subimagens) -> None:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
     percentual_de_acerto_por_subimagem = list()
@@ -65,6 +84,42 @@ def calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, d
     print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
     print(mean(percentual_de_acerto_por_subimagem).item())
     print()
+
+
+def calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes: list, predicoes: list) -> float:
+    centros_das_anotacoes = [[] for _ in range(len(anotacoes))]
+    centros_das_predicoes = [[] for _ in range(len(predicoes))]
+    for i, boxes in enumerate(anotacoes):
+        for box in boxes:
+            centros_das_anotacoes[i].append(calcular_centro(box))
+    for i, boxes in enumerate(predicoes):
+        for box in boxes:
+            centros_das_predicoes[i].append(calcular_centro(box))
+
+    percentuais_de_acertos_por_categoria = list()
+    for categoria_anotacao, categoria_predicao in zip(centros_das_anotacoes, centros_das_predicoes):
+        if categoria_anotacao and categoria_predicao:
+            matriz_de_distancias = zeros((len(categoria_anotacao), len(categoria_predicao)))
+            for i, centro_i in enumerate(categoria_anotacao):
+                for j, centro_j in enumerate(categoria_predicao):
+                    distancia = calcular_distancia(centro_i, centro_j)
+                    matriz_de_distancias[i][j] = distancia
+            row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
+            acertos = list()
+            for row, col in zip(row_ind, col_ind):
+                if matriz_de_distancias[row][col] <= float(environ.get('DISTANCIA_MINIMA_CENTROS')):
+                    acertos.append(1)
+            maior = max(len(categoria_anotacao), len(categoria_predicao))
+            percentuais_de_acertos_por_categoria.append(len(acertos) / maior)
+        elif categoria_anotacao and not categoria_predicao:
+            percentuais_de_acertos_por_categoria.append(0)
+        elif not categoria_anotacao and not categoria_predicao:
+            percentuais_de_acertos_por_categoria.append(1)
+        elif not categoria_anotacao and categoria_predicao:
+            percentuais_de_acertos_por_categoria.append(0)
+    return mean(percentuais_de_acertos_por_categoria)
+
+
 
 
 def calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes: list, predicoes: list) -> float:
@@ -172,6 +227,7 @@ def main():
     aplicar_batched_nms(deteccoes_subimagens)
 
     calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens)
+    calcular_metricas_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens)
 
 
 if __name__ == '__main__':
