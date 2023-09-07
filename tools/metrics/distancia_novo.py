@@ -2,6 +2,7 @@ from json import load
 from os import environ
 from typing import Union
 
+from numpy import mean
 from torch import float32, int64, tensor
 from torchvision.ops import batched_nms
 
@@ -34,7 +35,24 @@ def aplicar_batched_nms(predicoes: dict) -> None:
 
 
 def calcular_metricas_nas_subimagens(anotacoes_subimagens: dict, deteccoes_subimagens) -> None:
-    anotacoes = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
+    anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
+    anotacoes_por_subimagem = list()
+    for nome_imagem, anotacoes in anotacoes_convertidas.items():
+        predicoes = deteccoes_subimagens.get(nome_imagem)
+        if existe_bbox(anotacoes) and existe_bbox(predicoes):
+            percentual_de_acerto = calcular_percentual_de_acerto_por_subimagem(anotacoes, predicoes)
+            anotacoes_por_subimagem.append(percentual_de_acerto)
+        elif existe_bbox(anotacoes) and not existe_bbox(predicoes):
+            anotacoes_por_subimagem.append(0)
+        elif not existe_bbox(anotacoes) and not existe_bbox(predicoes):
+            anotacoes_por_subimagem.append(1)
+        elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
+            anotacoes_por_subimagem.append(0)
+    print(mean(anotacoes_por_subimagem).item())
+
+
+def calcular_percentual_de_acerto_por_subimagem(anotacoes: list, predicoes: list) -> float:
+    pass
 
 
 def carregar_json(caminho_arquivo: str) -> Union[dict, list]:
@@ -61,6 +79,13 @@ def converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens: dict) -
         subimagem = anotacoes_padronizadas_por_id_da_imagem[id_da_imagem]
         anotacoes_padronizadas[subimagem][categoria_da_anotacao - 1].append(bbox)
     return anotacoes_padronizadas
+
+
+def existe_bbox(lista: list[list[Union[int, float]]]) -> bool:
+    for elemento in lista:
+        if elemento:
+            return True
+    return False
 
 
 def remover_predicoes_com_a_mesma_localizacao(predicoes: dict) -> None:
