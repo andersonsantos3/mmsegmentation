@@ -28,7 +28,8 @@ def aplicar_batched_nms(predicoes: dict) -> None:
 
         predicoes_ = [[] for _ in range(len(valor))]
         for box, label, score in zip(boxes, labels, scores):
-            predicoes_[label] += [[box] + [score]]
+            box.append(score)
+            predicoes_[label].append(box)
         predicoes[chave] = predicoes_
 
 
