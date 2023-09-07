@@ -2,7 +2,8 @@ from json import load
 from os import environ
 from typing import Union
 
-from numpy import mean
+from numpy import array, mean, sqrt, zeros
+from scipy.optimize import linear_sum_assignment
 from torch import float32, int64, tensor
 from torchvision.ops import batched_nms
 
@@ -34,13 +35,26 @@ def aplicar_batched_nms(predicoes: dict) -> None:
         predicoes[chave] = predicoes_
 
 
-def calcular_metricas_nas_subimagens(anotacoes_subimagens: dict, deteccoes_subimagens) -> None:
+def calcular_centro(box: list[Union[int, float]]) -> tuple[Union[int, float], Union[int, float]]:
+    x = (box[0] + box[2]) / 2
+    y = (box[1] + box[3]) / 2
+    return x, y
+
+
+def calcular_distancia(
+        ponto_a: tuple[Union[int, float], Union[int, float]],
+        ponto_b: tuple[Union[int, float], Union[int, float]]
+) -> float:
+    return sqrt((ponto_b[0] - ponto_a[0]) ** 2 + (ponto_b[1] - ponto_a[1]) ** 2)
+
+
+def calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, deteccoes_subimagens) -> None:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
     anotacoes_por_subimagem = list()
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
         predicoes = deteccoes_subimagens.get(nome_imagem)
         if existe_bbox(anotacoes) and existe_bbox(predicoes):
-            percentual_de_acerto = calcular_percentual_de_acerto_por_subimagem(anotacoes, predicoes)
+            percentual_de_acerto = calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes, predicoes)
             anotacoes_por_subimagem.append(percentual_de_acerto)
         elif existe_bbox(anotacoes) and not existe_bbox(predicoes):
             anotacoes_por_subimagem.append(0)
@@ -48,11 +62,28 @@ def calcular_metricas_nas_subimagens(anotacoes_subimagens: dict, deteccoes_subim
             anotacoes_por_subimagem.append(1)
         elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
             anotacoes_por_subimagem.append(0)
+    print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
     print(mean(anotacoes_por_subimagem).item())
+    print()
 
 
-def calcular_percentual_de_acerto_por_subimagem(anotacoes: list, predicoes: list) -> float:
-    pass
+def calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes: list, predicoes: list) -> float:
+    centros_anotacoes = list()
+    centros_predicoes = list()
+    for categoria in anotacoes:
+        for box in categoria:
+            centros_anotacoes.append(calcular_centro(box))
+    for categoria in predicoes:
+        for box in categoria:
+            centros_predicoes.append(calcular_centro(box))
+    matriz_de_distancias = criar_matriz_de_distancias(centros_anotacoes, centros_predicoes)
+    row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
+    acertos = list()
+    for row, col in zip(row_ind, col_ind):
+        if matriz_de_distancias[row][col] <= float(environ.get('DISTANCIA_MINIMA_CENTROS')):
+            acertos.append(1)
+    maior = max(len(centros_anotacoes), len(centros_predicoes))
+    return len(acertos) / maior
 
 
 def carregar_json(caminho_arquivo: str) -> Union[dict, list]:
@@ -79,6 +110,18 @@ def converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens: dict) -
         subimagem = anotacoes_padronizadas_por_id_da_imagem[id_da_imagem]
         anotacoes_padronizadas[subimagem][categoria_da_anotacao - 1].append(bbox)
     return anotacoes_padronizadas
+
+
+def criar_matriz_de_distancias(
+        centros_anotacoes: list[tuple[Union[int, float], Union[int, float]]],
+        centros_predicoes: list[tuple[Union[int, float], Union[int, float]]]
+) -> array:
+    matriz_de_distancias = zeros((len(centros_anotacoes), len(centros_predicoes)))
+    for i, centro_i in enumerate(centros_anotacoes):
+        for j, centro_j in enumerate(centros_predicoes):
+            distancia = calcular_distancia(centro_i, centro_j)
+            matriz_de_distancias[i][j] = distancia
+    return array(matriz_de_distancias)
 
 
 def existe_bbox(lista: list[list[Union[int, float]]]) -> bool:
@@ -128,7 +171,7 @@ def main():
     remover_predicoes_com_a_mesma_localizacao(deteccoes_subimagens)
     aplicar_batched_nms(deteccoes_subimagens)
 
-    calcular_metricas_nas_subimagens(anotacoes_subimagens, deteccoes_subimagens)
+    calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens)
 
 
 if __name__ == '__main__':
