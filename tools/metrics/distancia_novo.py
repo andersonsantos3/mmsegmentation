@@ -50,20 +50,20 @@ def calcular_distancia(
 
 def calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, deteccoes_subimagens) -> None:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
-    anotacoes_por_subimagem = list()
+    percentual_de_acerto_por_subimagem = list()
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
         predicoes = deteccoes_subimagens.get(nome_imagem)
         if existe_bbox(anotacoes) and existe_bbox(predicoes):
             percentual_de_acerto = calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes, predicoes)
-            anotacoes_por_subimagem.append(percentual_de_acerto)
+            percentual_de_acerto_por_subimagem.append(percentual_de_acerto)
         elif existe_bbox(anotacoes) and not existe_bbox(predicoes):
-            anotacoes_por_subimagem.append(0)
+            percentual_de_acerto_por_subimagem.append(0)
         elif not existe_bbox(anotacoes) and not existe_bbox(predicoes):
-            anotacoes_por_subimagem.append(1)
+            percentual_de_acerto_por_subimagem.append(1)
         elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
-            anotacoes_por_subimagem.append(0)
+            percentual_de_acerto_por_subimagem.append(0)
     print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
-    print(mean(anotacoes_por_subimagem).item())
+    print(mean(percentual_de_acerto_por_subimagem).item())
     print()
 
 
