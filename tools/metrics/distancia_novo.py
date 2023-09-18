@@ -48,7 +48,7 @@ def calcular_distancia(
     return sqrt((ponto_b[0] - ponto_a[0]) ** 2 + (ponto_b[1] - ponto_a[1]) ** 2)
 
 
-def calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens: dict, deteccoes_subimagens) -> None:
+def calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens: dict, deteccoes_subimagens: dict) -> None:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
     percentual_de_acerto_por_subimagem = list()
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
@@ -67,7 +67,7 @@ def calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens: dict, de
     print()
 
 
-def calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, deteccoes_subimagens) -> None:
+def calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, deteccoes_subimagens: dict) -> None:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
     percentual_de_acerto_por_subimagem = list()
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
