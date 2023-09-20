@@ -62,7 +62,6 @@ def calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens: dict, de
             percentual_de_acerto_por_subimagem.append(1)
         elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
             percentual_de_acerto_por_subimagem.append(0)
-    print('Pontuação nas subimagens considerando localização e categorias')
     print(mean(percentual_de_acerto_por_subimagem).item())
     print()
 
@@ -81,7 +80,6 @@ def calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, de
             percentual_de_acerto_por_subimagem.append(1)
         elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
             percentual_de_acerto_por_subimagem.append(0)
-    print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
     print(mean(percentual_de_acerto_por_subimagem).item())
     print()
 
@@ -226,7 +224,9 @@ def main():
     remover_predicoes_com_a_mesma_localizacao(deteccoes_subimagens)
     aplicar_batched_nms(deteccoes_subimagens)
 
+    print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
     calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens)
+    print('Pontuação nas subimagens considerando localização e categorias')
     calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens)
 
 
