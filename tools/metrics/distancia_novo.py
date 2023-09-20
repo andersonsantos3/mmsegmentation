@@ -118,8 +118,6 @@ def calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes: list, p
     return mean(percentuais_de_acertos_por_categoria)
 
 
-
-
 def calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes: list, predicoes: list) -> float:
     centros_anotacoes = list()
     centros_predicoes = list()
