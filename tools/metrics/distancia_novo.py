@@ -51,7 +51,7 @@ def aplicar_batched_nms(predicoes: Union[dict, list]) -> Optional[list]:
             boxes.append(predicao['bbox'])
             labels.append(predicao['category_id'])
             scores.append(predicao['score'])
-            images_ids.append('image_id')
+            images_ids.append(predicao['image_id'])
         keep_idx = batched_nms(
             tensor(boxes, dtype=float32),
             tensor(scores, dtype=float32),
