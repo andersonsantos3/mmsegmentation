@@ -2,7 +2,7 @@ from collections import defaultdict
 from copy import deepcopy
 from json import load
 from os import environ
-from typing import Union
+from typing import Optional, Union
 
 from numpy import array, mean, sqrt, zeros
 from pandas import DataFrame, concat
@@ -222,12 +222,17 @@ def remover_predicoes_com_a_mesma_localizacao(predicoes: dict) -> None:
                 predicoes[chave][categoria].append(box[:-1])
 
 
-def remover_predicoes_com_score_baixo(predicoes: dict) -> None:
+def remover_predicoes_com_score_baixo(predicoes: Union[dict, list]) -> Optional[list]:
     score_minimo = float(environ.get('SCORE_MINIMO'))
-    for key, predicoes_ in predicoes.items():
-        for i, boxes in enumerate(predicoes_):
-            predicoes_[i] = [box for box in boxes if box[-1] >= score_minimo]
-        predicoes[key] = predicoes_
+
+    if isinstance(predicoes, dict):
+        for key, predicoes_ in predicoes.items():
+            for i, boxes in enumerate(predicoes_):
+                predicoes_[i] = [box for box in boxes if box[-1] >= score_minimo]
+            predicoes[key] = predicoes_
+    elif isinstance(predicoes, list):
+        predicoes = [predicao for predicao in predicoes if predicao['score'] >= score_minimo]
+        return predicoes
 
 
 def unir_deteccoes_das_subimagens(deteccoes_subimagens: dict) -> dict:
@@ -661,8 +666,10 @@ def main():
     anotacoes_imagens = carregar_json(environ.get('ARQUIVO_ANOTACOES_IMAGENS'))
     anotacoes_subimagens = carregar_json(environ.get('ARQUIVO_ANOTACOES_SUBIMAGENS'))
     deteccoes_subimagens = carregar_json(environ.get('ARQUIVO_DETECCOES_SUBIMAGENS'))
+    predicoes_segmentacao = carregar_json(environ.get('ARQUIVO_PREDICOES_SEGMENTACAO'))
 
     remover_predicoes_com_score_baixo(deteccoes_subimagens)
+    predicoes_segmentacao = remover_predicoes_com_score_baixo(predicoes_segmentacao)
     remover_predicoes_com_a_mesma_localizacao(deteccoes_subimagens)
     aplicar_batched_nms(deteccoes_subimagens)
 
