@@ -669,13 +669,28 @@ def main():
     deteccoes_imagens = unir_deteccoes_das_subimagens(deteccoes_subimagens)
 
     print('Pontuação nas imagens considerando apenas a localização e ignorando as categorias')
-    calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
+    print('Detecção: {}\t Segmentação: {}\n'.format(
+        calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens),
+        'Implementando...'
+    ))
+
     print('Pontuação nas imagens considerando localização e categorias')
-    calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
+    print('Detecção: {}\t Segmentação: {}\n'.format(
+        calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, deteccoes_imagens),
+        'Implementando...'
+    ))
+
     print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
-    calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens)
+    print('Detecção: {}\t Segmentação: {}\n'.format(
+        calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens),
+        'Implementando...'
+    ))
+
     print('Pontuação nas subimagens considerando localização e categorias')
-    calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens)
+    print('Detecção: {}\t Segmentação: {}\n'.format(
+        calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens),
+        'Implementando...'
+    ))
 
 
 if __name__ == '__main__':
