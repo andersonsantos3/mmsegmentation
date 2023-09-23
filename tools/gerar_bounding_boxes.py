@@ -123,14 +123,19 @@ def obter_predicoes(caminho_predicoes: str) -> ndarray:
     return predicoes
 
 
-def salvar_predicoes_unidas(
+def salvar_predicoes_subimagens(predicoes_subimagens: list[dict], diretorio_saida: str) -> None:
+    if not exists(diretorio_saida):
+        makedirs(diretorio_saida, exist_ok=True)
+
+def salvar_predicoes(
         predicoes_unidas: list[dict[str, Union[int, float, list[float]]]],
-        diretorio_saida: str
+        diretorio_saida: str,
+        nome_arquivo: str
 ) -> None:
     if not exists(diretorio_saida):
         makedirs(diretorio_saida, exist_ok=True)
 
-    with open(join(diretorio_saida, 'predicoes.json'), 'w', encoding='utf_8') as arquivo:
+    with open(join(diretorio_saida, nome_arquivo), 'w', encoding='utf_8') as arquivo:
         dump(predicoes_unidas, arquivo, indent=4)
 
 
@@ -143,7 +148,8 @@ def main():
     ids_subimagens = obter_ids_subimagens(args.caminho_dataset_subimagens)
     predicoes_subimagens = gerar_boxes_imagens(nomes_imagens, predicoes, args.limiar_bbox, ids_subimagens, 'subimagem')
     predicoes_unidas = gerar_boxes_imagens(nomes_imagens, predicoes, args.limiar_bbox, ids_imagens, 'imagem')
-    salvar_predicoes_unidas(predicoes_unidas, args.diretorio_saida)
+    salvar_predicoes(predicoes_subimagens, args.diretorio_saida, 'predicoes_subimagens.json')
+    salvar_predicoes(predicoes_unidas, args.diretorio_saida, 'predicoes_imagens.json')
 
 
 if __name__ == '__main__':
