@@ -728,7 +728,7 @@ def main():
     print('Pontuação nas imagens considerando apenas a localização e ignorando as categorias')
     print('Detecção: {}\t Segmentação: {}\n'.format(
         calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens),
-        'Implementando...'
+        calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, predicoes_segmentacao_imagens),
     ))
 
     print('Pontuação nas imagens considerando localização e categorias')
