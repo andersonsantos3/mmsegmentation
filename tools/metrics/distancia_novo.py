@@ -56,15 +56,15 @@ def calcular_distancia(
     return sqrt((ponto_b[0] - ponto_a[0]) ** 2 + (ponto_b[1] - ponto_a[1]) ** 2)
 
 
-def calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens: dict, deteccoes_imagens: dict) -> None:
-    calcular_metrica_nas_subimagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
+def calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens: dict, deteccoes_imagens: dict) -> float:
+    return calcular_metrica_nas_subimagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
 
 
-def calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens: dict, deteccoes_imagens: dict) -> None:
-    calcular_metrica_nas_subimagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
+def calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens: dict, deteccoes_imagens: dict) -> float:
+    return calcular_metrica_nas_subimagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
 
 
-def calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens: dict, deteccoes_subimagens: dict) -> None:
+def calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens: dict, deteccoes_subimagens: dict) -> float:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
     percentual_de_acerto_por_subimagem = list()
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
@@ -78,11 +78,10 @@ def calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens: dict, de
             percentual_de_acerto_por_subimagem.append(1)
         elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
             percentual_de_acerto_por_subimagem.append(0)
-    print(mean(percentual_de_acerto_por_subimagem).item())
-    print()
+    return round(mean(percentual_de_acerto_por_subimagem).item(), 3)
 
 
-def calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, deteccoes_subimagens: dict) -> None:
+def calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, deteccoes_subimagens: dict) -> float:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
     percentual_de_acerto_por_subimagem = list()
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
@@ -96,8 +95,7 @@ def calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, de
             percentual_de_acerto_por_subimagem.append(1)
         elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
             percentual_de_acerto_por_subimagem.append(0)
-    print(mean(percentual_de_acerto_por_subimagem).item())
-    print()
+    return round(mean(percentual_de_acerto_por_subimagem).item(), 3)
 
 
 def calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes: list, predicoes: list) -> float:
