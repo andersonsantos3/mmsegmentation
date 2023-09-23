@@ -17,6 +17,7 @@ def parse_args() -> Namespace:
     parser.add_argument('caminho_predicoes', help='Caminho para o arquivo .pkl com as predições')
     parser.add_argument('caminho_txt', help='Caminho para o arquivo .txt que possui o nome das imagens')
     parser.add_argument('caminho_dataset', help='Caminho para o arquivo .json com as anotações')
+    parser.add_argument('caminho_dataset_subimagens', help='Caminho para o arquivo .json com as anotações nas subimagens')
     parser.add_argument('diretorio_saida', help='Diretório para salvar o arquivo .json com os resultados')
 
     parser.add_argument('--limiar_bbox', help='Área mínima (em pixels) para considerar uma bbox', type=int, default=1)
@@ -83,6 +84,13 @@ def obter_ids_imagens(caminho_dataset: str) -> dict[str, int]:
     return ids_imagens
 
 
+def obter_ids_subimagens(caminho_dataset_subimagens: str) -> dict[str, int]:
+    with open(caminho_dataset_subimagens, 'r', encoding='utf_8') as arquivo:
+        dados = load_json(arquivo)
+    ids_subimagens = {'_'.join(imagem['file_name'].split('.')[:-1] + list(map(str, imagem['subimagem']))): imagem['id'] for imagem in dados['images']}
+    return ids_subimagens
+
+
 def obter_nomes_imagens_ordenados(caminho_txt: str) -> list[str]:
     with open(caminho_txt, 'r', encoding='utf_8') as arquivo:
         nomes_imagens = [linha.removesuffix('\n') for linha in arquivo.readlines()]
@@ -113,6 +121,7 @@ def main():
     predicoes = obter_predicoes(args.caminho_predicoes)
     nomes_imagens = obter_nomes_imagens_ordenados(args.caminho_txt)
     ids_imagens = obter_ids_imagens(args.caminho_dataset)
+    ids_subimagens = obter_ids_subimagens(args.caminho_dataset_subimagens)
     predicoes_unidas = gerar_boxes_imagens(nomes_imagens, predicoes, args.limiar_bbox, ids_imagens)
     salvar_predicoes_unidas(predicoes_unidas, args.diretorio_saida)
 
