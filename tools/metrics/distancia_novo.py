@@ -198,28 +198,42 @@ def existe_bbox(lista: list[list[Union[int, float]]]) -> bool:
     return False
 
 
-def remover_predicoes_com_a_mesma_localizacao(predicoes: dict) -> None:
-    for chave, valor in predicoes.items():
-        boxes = list()  # armazena boxes de todas as categorias em um único lugar para facilitar comparação
-        for categoria in range(len(valor)):
-            boxes += [box + [categoria] for box in valor[categoria]]
+def remover_predicoes_com_a_mesma_localizacao(predicoes: Union[dict, list]) -> Optional[list]:
+    if isinstance(predicoes, dict):
+        for chave, valor in predicoes.items():
+            boxes = list()  # armazena boxes de todas as categorias em um único lugar para facilitar comparação
+            for categoria in range(len(valor)):
+                boxes += [box + [categoria] for box in valor[categoria]]
 
+            boxes_para_remover = list()
+            for i in range(len(boxes) - 1):
+                xmin_i, ymin_i, xmax_i, ymax_i, score_i, _ = boxes[i]
+                for j in range(i + 1, len(boxes)):
+                    xmin_j, ymin_j, xmax_j, ymax_j, score_j, _ = boxes[j]
+                    if xmin_i == xmin_j and ymin_i == ymin_j and xmax_i == xmax_j and ymax_i == ymax_j:
+                        if score_i > score_j:
+                            boxes_para_remover.append(j)
+                        elif score_j > score_i:
+                            boxes_para_remover.append(i)
+
+            predicoes[chave] = [[] for _ in range(len(valor))]
+            for i, box in enumerate(boxes):
+                categoria = box[-1]
+                if i not in boxes_para_remover:
+                    predicoes[chave][categoria].append(box[:-1])
+    elif isinstance(predicoes, list):
         boxes_para_remover = list()
-        for i in range(len(boxes) - 1):
-            xmin_i, ymin_i, xmax_i, ymax_i, score_i, _ = boxes[i]
-            for j in range(i + 1, len(boxes)):
-                xmin_j, ymin_j, xmax_j, ymax_j, score_j, _ = boxes[j]
+        for i in range(len(predicoes) - 1):
+            xmin_i, ymin_i, xmax_i, ymax_i = predicoes[i]['bbox']
+            for j in range(i + 1, len(predicoes)):
+                xmin_j, ymin_j, xmax_j, ymax_j = predicoes[j]['bbox']
                 if xmin_i == xmin_j and ymin_i == ymin_j and xmax_i == xmax_j and ymax_i == ymax_j:
-                    if score_i > score_j:
+                    if predicoes[i]['score'] > predicoes[j]['score']:
                         boxes_para_remover.append(j)
-                    elif score_j > score_i:
+                    elif predicoes[j]['score'] > predicoes[i]['bbox']:
                         boxes_para_remover.append(i)
-
-        predicoes[chave] = [[] for _ in range(len(valor))]
-        for i, box in enumerate(boxes):
-            categoria = box[-1]
-            if i not in boxes_para_remover:
-                predicoes[chave][categoria].append(box[:-1])
+        predicoes = [predicao for i, predicao in enumerate(predicoes) if i not in boxes_para_remover]
+        return predicoes
 
 
 def remover_predicoes_com_score_baixo(predicoes: Union[dict, list]) -> Optional[list]:
@@ -671,6 +685,7 @@ def main():
     remover_predicoes_com_score_baixo(deteccoes_subimagens)
     predicoes_segmentacao = remover_predicoes_com_score_baixo(predicoes_segmentacao)
     remover_predicoes_com_a_mesma_localizacao(deteccoes_subimagens)
+    predicoes_segmentacao = remover_predicoes_com_a_mesma_localizacao(predicoes_segmentacao)
     aplicar_batched_nms(deteccoes_subimagens)
 
     deteccoes_imagens = unir_deteccoes_das_subimagens(deteccoes_subimagens)
