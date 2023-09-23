@@ -198,6 +198,13 @@ def existe_bbox(lista: list[list[Union[int, float]]]) -> bool:
     return False
 
 
+def padronizar_predicoes_segmentacao(predicoes_segmentacao: list[dict]) -> list[dict]:
+    for predicao in predicoes_segmentacao:
+        xmin, ymin, w, h = predicao['bbox']
+        predicao['bbox'] = [xmin, ymin, xmin + w, ymin + h]
+    return predicoes_segmentacao
+
+
 def remover_predicoes_com_a_mesma_localizacao(predicoes: Union[dict, list]) -> Optional[list]:
     if isinstance(predicoes, dict):
         for chave, valor in predicoes.items():
@@ -682,6 +689,7 @@ def main():
     deteccoes_subimagens = carregar_json(environ.get('ARQUIVO_DETECCOES_SUBIMAGENS'))
     predicoes_segmentacao = carregar_json(environ.get('ARQUIVO_PREDICOES_SEGMENTACAO'))
 
+    predicoes_segmentacao = padronizar_predicoes_segmentacao(predicoes_segmentacao)
     remover_predicoes_com_score_baixo(deteccoes_subimagens)
     predicoes_segmentacao = remover_predicoes_com_score_baixo(predicoes_segmentacao)
     remover_predicoes_com_a_mesma_localizacao(deteccoes_subimagens)
