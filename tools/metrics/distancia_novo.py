@@ -713,15 +713,15 @@ def main():
     anotacoes_imagens = carregar_json(environ.get('ARQUIVO_ANOTACOES_IMAGENS'))
     anotacoes_subimagens = carregar_json(environ.get('ARQUIVO_ANOTACOES_SUBIMAGENS'))
     deteccoes_subimagens = carregar_json(environ.get('ARQUIVO_DETECCOES_SUBIMAGENS'))
-    predicoes_segmentacao = carregar_json(environ.get('ARQUIVO_PREDICOES_SEGMENTACAO'))
+    predicoes_segmentacao_imagens = carregar_json(environ.get('ARQUIVO_PREDICOES_SEGMENTACAO'))
 
-    predicoes_segmentacao = padronizar_predicoes_segmentacao(predicoes_segmentacao)
+    predicoes_segmentacao_imagens = padronizar_predicoes_segmentacao(predicoes_segmentacao_imagens)
     remover_predicoes_com_score_baixo(deteccoes_subimagens)
-    predicoes_segmentacao = remover_predicoes_com_score_baixo(predicoes_segmentacao)
+    predicoes_segmentacao_imagens = remover_predicoes_com_score_baixo(predicoes_segmentacao_imagens)
     remover_predicoes_com_a_mesma_localizacao(deteccoes_subimagens)
-    predicoes_segmentacao = remover_predicoes_com_a_mesma_localizacao(predicoes_segmentacao)
+    predicoes_segmentacao_imagens = remover_predicoes_com_a_mesma_localizacao(predicoes_segmentacao_imagens)
     aplicar_batched_nms(deteccoes_subimagens)
-    predicoes_segmentacao = aplicar_batched_nms(predicoes_segmentacao)
+    predicoes_segmentacao_imagens = aplicar_batched_nms(predicoes_segmentacao_imagens)
 
     deteccoes_imagens = unir_deteccoes_das_subimagens(deteccoes_subimagens)
 
