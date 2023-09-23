@@ -713,7 +713,7 @@ def main():
     anotacoes_imagens = carregar_json(environ.get('ARQUIVO_ANOTACOES_IMAGENS'))
     anotacoes_subimagens = carregar_json(environ.get('ARQUIVO_ANOTACOES_SUBIMAGENS'))
     deteccoes_subimagens = carregar_json(environ.get('ARQUIVO_DETECCOES_SUBIMAGENS'))
-    predicoes_segmentacao_imagens = carregar_json(environ.get('ARQUIVO_PREDICOES_SEGMENTACAO'))
+    predicoes_segmentacao_imagens = carregar_json(environ.get('ARQUIVO_PREDICOES_SEGMENTACAO_IMAGENS'))
 
     predicoes_segmentacao_imagens = padronizar_predicoes_segmentacao(predicoes_segmentacao_imagens)
     remover_predicoes_com_score_baixo(deteccoes_subimagens)
