@@ -56,6 +56,10 @@ def calcular_distancia(
     return sqrt((ponto_b[0] - ponto_a[0]) ** 2 + (ponto_b[1] - ponto_a[1]) ** 2)
 
 
+def calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens: dict, deteccoes_imagens: dict) -> None:
+    calcular_metrica_nas_subimagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
+
+
 def calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens: dict, deteccoes_imagens: dict) -> None:
     calcular_metrica_nas_subimagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
 
@@ -668,6 +672,8 @@ def main():
 
     print('Pontuação nas imagens considerando apenas a localização e ignorando as categorias')
     calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
+    print('Pontuação nas imagens considerando localização e categorias')
+    calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
     print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
     calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens)
     print('Pontuação nas subimagens considerando localização e categorias')
