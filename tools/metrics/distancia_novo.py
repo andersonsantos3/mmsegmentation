@@ -16,16 +16,42 @@ DISTANCIA_DA_AREA_DE_UNIAO = float(environ.get('DISTANCIA_DA_AREA_DE_UNIAO'))
 DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS = float(environ.get('DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS'))
 
 
-def aplicar_batched_nms(predicoes: dict) -> None:
-    for chave, valor in predicoes.items():
+def aplicar_batched_nms(predicoes: Union[dict, list]) -> Optional[list]:
+    if isinstance(predicoes, dict):
+        for chave, valor in predicoes.items():
+            boxes = list()
+            labels = list()
+            scores = list()
+            for categoria in range(len(valor)):
+                if valor[categoria]:
+                    boxes += [box[:-1] for box in valor[categoria]]
+                    labels += [categoria] * len(valor[categoria])
+                    scores += [box[-1] for box in valor[categoria]]
+            keep_idx = batched_nms(
+                tensor(boxes, dtype=float32),
+                tensor(scores, dtype=float32),
+                tensor(labels, dtype=int64),
+                0.3
+            ).numpy().tolist()
+            boxes = [boxes[idx] for idx in keep_idx]
+            labels = [labels[idx] for idx in keep_idx]
+            scores = [scores[idx] for idx in keep_idx]
+
+            predicoes_ = [[] for _ in range(len(valor))]
+            for box, label, score in zip(boxes, labels, scores):
+                box.append(score)
+                predicoes_[label].append(box)
+            predicoes[chave] = predicoes_
+    elif isinstance(predicoes, list):
         boxes = list()
         labels = list()
         scores = list()
-        for categoria in range(len(valor)):
-            if valor[categoria]:
-                boxes += [box[:-1] for box in valor[categoria]]
-                labels += [categoria] * len(valor[categoria])
-                scores += [box[-1] for box in valor[categoria]]
+        images_ids = list()
+        for predicao in predicoes:
+            boxes.append(predicao['bbox'])
+            labels.append(predicao['category_id'])
+            scores.append(predicao['score'])
+            images_ids.append('image_id')
         keep_idx = batched_nms(
             tensor(boxes, dtype=float32),
             tensor(scores, dtype=float32),
@@ -35,12 +61,12 @@ def aplicar_batched_nms(predicoes: dict) -> None:
         boxes = [boxes[idx] for idx in keep_idx]
         labels = [labels[idx] for idx in keep_idx]
         scores = [scores[idx] for idx in keep_idx]
+        images_ids = [images_ids[idx] for idx in keep_idx]
 
-        predicoes_ = [[] for _ in range(len(valor))]
-        for box, label, score in zip(boxes, labels, scores):
-            box.append(score)
-            predicoes_[label].append(box)
-        predicoes[chave] = predicoes_
+        predicoes_ = list()
+        for box, label, score, image_id in zip(boxes, labels, scores, images_ids):
+            predicoes_.append(dict(bbox=box, category_id=label, image_id=image_id, score=score))
+        return predicoes_
 
 
 def calcular_centro(box: list[Union[int, float]]) -> tuple[Union[int, float], Union[int, float]]:
@@ -695,6 +721,7 @@ def main():
     remover_predicoes_com_a_mesma_localizacao(deteccoes_subimagens)
     predicoes_segmentacao = remover_predicoes_com_a_mesma_localizacao(predicoes_segmentacao)
     aplicar_batched_nms(deteccoes_subimagens)
+    predicoes_segmentacao = aplicar_batched_nms(predicoes_segmentacao)
 
     deteccoes_imagens = unir_deteccoes_das_subimagens(deteccoes_subimagens)
 
