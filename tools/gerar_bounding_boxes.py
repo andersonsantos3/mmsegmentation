@@ -30,31 +30,50 @@ def gerar_boxes_imagens(
         nomes_imagens: list[str],
         predicoes: ndarray,
         limiar_bbox: int,
-        ids_imagens: dict[str, int]
+        ids_imagens: dict[str, int],
+        tipo: str
 ) -> list[dict[str, Union[int, float, list[float]]]]:
     """Código adaptado de: https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_label.html"""
 
     assert len(nomes_imagens) == len(predicoes), 'Subimagens e predições devem ter o mesmo tamanho'
 
     imagens = defaultdict(dict)
-    for nome_imagem, predicao in zip(nomes_imagens, predicoes):
-        nome = nome_imagem.split('_')[0]
-        if nome not in imagens:
-            imagens[nome]['boxes'] = list()
-            imagens[nome]['labels'] = list()
-            imagens[nome]['scores'] = list()
+    if tipo == 'imagem':
+        for nome_imagem, predicao in zip(nomes_imagens, predicoes):
+            nome = nome_imagem.split('_')[0]
+            if nome not in imagens:
+                imagens[nome]['boxes'] = list()
+                imagens[nome]['labels'] = list()
+                imagens[nome]['scores'] = list()
 
-        xmin_, ymin_, _, _ = map(int, nome_imagem.split('_')[1:])
-        bw = closing(predicao > 0, square(3))
-        label_image = label_img(bw)
-        for region in regionprops(label_image):
-            if region.area_bbox >= limiar_bbox:
-                ymin, xmin, ymax, xmax = region.bbox
-                categoria, score = obter_categoria_score(predicao, xmin, ymin, xmax, ymax)
+            xmin_, ymin_, _, _ = map(int, nome_imagem.split('_')[1:])
+            bw = closing(predicao > 0, square(3))
+            label_image = label_img(bw)
+            for region in regionprops(label_image):
+                if region.area_bbox >= limiar_bbox:
+                    ymin, xmin, ymax, xmax = region.bbox
+                    categoria, score = obter_categoria_score(predicao, xmin, ymin, xmax, ymax)
 
-                imagens[nome]['boxes'].append([xmin_ + xmin, ymin_ + ymin, xmax - xmin, ymax - ymin])
-                imagens[nome]['labels'].append(categoria)
-                imagens[nome]['scores'].append(score)
+                    imagens[nome]['boxes'].append([xmin_ + xmin, ymin_ + ymin, xmax - xmin, ymax - ymin])
+                    imagens[nome]['labels'].append(categoria)
+                    imagens[nome]['scores'].append(score)
+    elif tipo == 'subimagem':
+        for nome_imagem, predicao in zip(nomes_imagens, predicoes):
+            if nome_imagem not in imagens:
+                imagens[nome_imagem]['boxes'] = list()
+                imagens[nome_imagem]['labels'] = list()
+                imagens[nome_imagem]['scores'] = list()
+
+            bw = closing(predicao > 0, square(3))
+            label_image = label_img(bw)
+            for region in regionprops(label_image):
+                if region.area_bbox >= limiar_bbox:
+                    ymin, xmin, ymax, xmax = region.bbox
+                    categoria, score = obter_categoria_score(predicao, xmin, ymin, xmax, ymax)
+
+                    imagens[nome_imagem]['boxes'].append([xmin, ymin, xmax - xmin, ymax - ymin])
+                    imagens[nome_imagem]['labels'].append(categoria)
+                    imagens[nome_imagem]['scores'].append(score)
 
     resultados = list()
     for imagem in imagens:
@@ -122,7 +141,8 @@ def main():
     nomes_imagens = obter_nomes_imagens_ordenados(args.caminho_txt)
     ids_imagens = obter_ids_imagens(args.caminho_dataset)
     ids_subimagens = obter_ids_subimagens(args.caminho_dataset_subimagens)
-    predicoes_unidas = gerar_boxes_imagens(nomes_imagens, predicoes, args.limiar_bbox, ids_imagens)
+    predicoes_subimagens = gerar_boxes_imagens(nomes_imagens, predicoes, args.limiar_bbox, ids_subimagens, 'subimagem')
+    predicoes_unidas = gerar_boxes_imagens(nomes_imagens, predicoes, args.limiar_bbox, ids_imagens, 'imagem')
     salvar_predicoes_unidas(predicoes_unidas, args.diretorio_saida)
 
 
