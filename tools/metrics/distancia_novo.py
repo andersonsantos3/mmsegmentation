@@ -494,12 +494,9 @@ def unir_deteccoes_horizontalmente(df_uniao: DataFrame) -> DataFrame:
                         or dist_p3_p2 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS):
 
                     nova_subimagem = unir_subimagens(box_1_subimagem, box_2_subimagem)
-
-                    # une as detecções e cria uma nova
-                    novo_xmin = min(xmin, xmin_)
-                    novo_ymin = min(ymin, ymin_)
-                    novo_xmax = max(xmax, xmax_)
-                    novo_ymax = max(ymax, ymax_)
+                    novo_xmin, novo_ymin, novo_xmax, novo_ymax = unir_deteccoes(
+                        xmin, ymin, xmax, ymax, xmin_, ymin_,xmax_, ymax_
+                    )
 
                     # verifica se a nova detecção está em área de união com a nova subimagem
                     area_1 = [
@@ -586,6 +583,18 @@ def unir_deteccoes_horizontalmente(df_uniao: DataFrame) -> DataFrame:
     return df_deteccoes_unidas_horizontalmente
 
 
+def unir_deteccoes(
+        xmin: int, ymin: int, xmax: int, ymax: int, xmin_: int, ymin_: int, xmax_: int, ymax_: int
+) -> tuple[int, int, int, int]:
+    """Une as detecções e cria uma nova"""
+
+    novo_xmin = min(xmin, xmin_)
+    novo_ymin = min(ymin, ymin_)
+    novo_xmax = max(xmax, xmax_)
+    novo_ymax = max(ymax, ymax_)
+    return novo_xmin, novo_ymin, novo_xmax, novo_ymax
+
+
 def unir_subimagens(box_1_subimagem: list[int], box_2_subimagem: list[int]) -> list[int]:
     """Une as subimagens e cria uma nova"""
 
@@ -657,12 +666,9 @@ def unir_deteccoes_verticalmente(df_uniao: DataFrame) -> DataFrame:
                         or dist_p4_p1 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS):
                     # une as duas subimagens e cria uma nova
                     nova_subimagem = unir_subimagens(box_1_subimagem, box_2_subimagem)
-
-                    # une as duas detecções e cria uma nova
-                    novo_xmin = min(xmin, xmin_)
-                    novo_ymin = min(ymin, ymin_)
-                    novo_xmax = max(xmax, xmax_)
-                    novo_ymax = max(ymax, ymax_)
+                    novo_xmin, novo_ymin, novo_xmax, novo_ymax = unir_deteccoes(
+                        xmin, ymin, xmax, ymax, xmin_, ymin_, xmax_, ymax_
+                    )
 
                     # verifica se a nova detecção está em área de união com a nova subimagem
                     area1 = [
