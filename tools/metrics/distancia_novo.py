@@ -793,7 +793,7 @@ def main():
     print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
     print('Detecção: {}\t Segmentação: {}\n'.format(
         calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens),
-        'Implementando...'
+        calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
     ))
 
     print('Pontuação nas subimagens considerando localização e categorias')
