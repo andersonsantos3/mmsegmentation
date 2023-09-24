@@ -264,6 +264,38 @@ def existe_bbox(lista: list[list[Union[int, float]]]) -> bool:
     return False
 
 
+def obter_areas_de_uniao(
+        nova_subimagem: list[int, int, int, int]
+) -> tuple[list[int], list[int], list[int], list[int]]:
+    """Cria áreas de união para uma subimagem"""
+
+    area_1 = [
+        nova_subimagem[0],
+        nova_subimagem[1],
+        nova_subimagem[2],
+        nova_subimagem[1] + DISTANCIA_DA_AREA_DE_UNIAO
+    ]
+    area_2 = [
+        nova_subimagem[0],
+        nova_subimagem[1],
+        nova_subimagem[0] + DISTANCIA_DA_AREA_DE_UNIAO,
+        nova_subimagem[3]
+    ]
+    area_3 = [
+        nova_subimagem[2] - DISTANCIA_DA_AREA_DE_UNIAO,
+        nova_subimagem[1],
+        nova_subimagem[2],
+        nova_subimagem[3]
+    ]
+    area_4 = [
+        nova_subimagem[0],
+        nova_subimagem[3] - DISTANCIA_DA_AREA_DE_UNIAO,
+        nova_subimagem[2],
+        nova_subimagem[3]
+    ]
+    return area_1, area_2, area_3, area_4
+
+
 def obter_ids_para_manter(boxes, labels, scores):
     keep_idx = batched_nms(
         tensor(boxes, dtype=float32),
@@ -492,38 +524,11 @@ def unir_deteccoes_horizontalmente(df_uniao: DataFrame) -> DataFrame:
 
                 if (dist_p2_p3 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS
                         or dist_p3_p2 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS):
-
                     nova_subimagem = unir_subimagens(box_1_subimagem, box_2_subimagem)
+                    area_1, area_2, area_3, area_4 = obter_areas_de_uniao(nova_subimagem)
                     novo_xmin, novo_ymin, novo_xmax, novo_ymax = unir_deteccoes(
                         xmin, ymin, xmax, ymax, xmin_, ymin_,xmax_, ymax_
                     )
-
-                    # verifica se a nova detecção está em área de união com a nova subimagem
-                    area_1 = [
-                        nova_subimagem[0],
-                        nova_subimagem[1],
-                        nova_subimagem[2],
-                        nova_subimagem[1] + DISTANCIA_DA_AREA_DE_UNIAO
-                    ]
-                    area_2 = [
-                        nova_subimagem[0],
-                        nova_subimagem[1],
-                        nova_subimagem[0] + DISTANCIA_DA_AREA_DE_UNIAO,
-                        nova_subimagem[3]
-                    ]
-                    area_3 = [
-                        nova_subimagem[2] - DISTANCIA_DA_AREA_DE_UNIAO,
-                        nova_subimagem[1],
-                        nova_subimagem[2],
-                        nova_subimagem[3]
-                    ]
-                    area_4 = [
-                        nova_subimagem[0],
-                        nova_subimagem[3] - DISTANCIA_DA_AREA_DE_UNIAO,
-                        nova_subimagem[2],
-                        nova_subimagem[3]
-                    ]
-
                     box_ = [novo_xmin, novo_ymin, novo_xmax, novo_ymax]
                     tem_interseccao = any([
                         verificar_interseccao(box_, area_1),
@@ -664,44 +669,17 @@ def unir_deteccoes_verticalmente(df_uniao: DataFrame) -> DataFrame:
 
                 if (dist_p1_p4 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS
                         or dist_p4_p1 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS):
-                    # une as duas subimagens e cria uma nova
                     nova_subimagem = unir_subimagens(box_1_subimagem, box_2_subimagem)
+                    area_1, area_2, area_3, area_4 = obter_areas_de_uniao(nova_subimagem)
                     novo_xmin, novo_ymin, novo_xmax, novo_ymax = unir_deteccoes(
                         xmin, ymin, xmax, ymax, xmin_, ymin_, xmax_, ymax_
                     )
-
-                    # verifica se a nova detecção está em área de união com a nova subimagem
-                    area1 = [
-                        nova_subimagem[0],
-                        nova_subimagem[1],
-                        nova_subimagem[2],
-                        nova_subimagem[1] + DISTANCIA_DA_AREA_DE_UNIAO
-                    ]
-                    area2 = [
-                        nova_subimagem[0],
-                        nova_subimagem[1],
-                        nova_subimagem[0] + DISTANCIA_DA_AREA_DE_UNIAO,
-                        nova_subimagem[3]
-                    ]
-                    area3 = [
-                        nova_subimagem[2] - DISTANCIA_DA_AREA_DE_UNIAO,
-                        nova_subimagem[1],
-                        nova_subimagem[2],
-                        nova_subimagem[3]
-                    ]
-                    area4 = [
-                        nova_subimagem[0],
-                        nova_subimagem[3] - DISTANCIA_DA_AREA_DE_UNIAO,
-                        nova_subimagem[2],
-                        nova_subimagem[3]
-                    ]
-
                     box_ = [novo_xmin, novo_ymin, novo_xmax, novo_ymax]
                     tem_interseccao = any([
-                        verificar_interseccao(box_, area1),
-                        verificar_interseccao(box_, area2),
-                        verificar_interseccao(box_, area3),
-                        verificar_interseccao(box_, area4)
+                        verificar_interseccao(box_, area_1),
+                        verificar_interseccao(box_, area_2),
+                        verificar_interseccao(box_, area_3),
+                        verificar_interseccao(box_, area_4)
                     ])
                     nova_pontuacao = max(box_1_pontuacao, box_2_pontuacao)
                     if not tem_interseccao:
