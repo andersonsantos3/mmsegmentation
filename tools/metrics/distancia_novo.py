@@ -27,12 +27,7 @@ def aplicar_batched_nms(predicoes: Union[dict, list]) -> Optional[list]:
                     boxes += [box[:-1] for box in valor[categoria]]
                     labels += [categoria] * len(valor[categoria])
                     scores += [box[-1] for box in valor[categoria]]
-            keep_idx = batched_nms(
-                tensor(boxes, dtype=float32),
-                tensor(scores, dtype=float32),
-                tensor(labels, dtype=int64),
-                0.3
-            ).numpy().tolist()
+            keep_idx = obter_ids_para_manter(boxes, labels, scores)
             boxes = [boxes[idx] for idx in keep_idx]
             labels = [labels[idx] for idx in keep_idx]
             scores = [scores[idx] for idx in keep_idx]
@@ -52,12 +47,7 @@ def aplicar_batched_nms(predicoes: Union[dict, list]) -> Optional[list]:
             labels.append(predicao['category_id'])
             scores.append(predicao['score'])
             images_ids.append(predicao['image_id'])
-        keep_idx = batched_nms(
-            tensor(boxes, dtype=float32),
-            tensor(scores, dtype=float32),
-            tensor(labels, dtype=int64),
-            0.3
-        ).numpy().tolist()
+        keep_idx = obter_ids_para_manter(boxes, labels, scores)
         boxes = [boxes[idx] for idx in keep_idx]
         labels = [labels[idx] for idx in keep_idx]
         scores = [scores[idx] for idx in keep_idx]
@@ -270,6 +260,16 @@ def existe_bbox(lista: list[list[Union[int, float]]]) -> bool:
         if elemento:
             return True
     return False
+
+
+def obter_ids_para_manter(boxes, labels, scores):
+    keep_idx = batched_nms(
+        tensor(boxes, dtype=float32),
+        tensor(scores, dtype=float32),
+        tensor(labels, dtype=int64),
+        0.3
+    ).numpy().tolist()
+    return keep_idx
 
 
 def padronizar_predicoes_segmentacao(predicoes_segmentacao: list[dict]) -> list[dict]:
