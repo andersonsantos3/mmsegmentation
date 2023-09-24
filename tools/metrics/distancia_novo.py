@@ -14,6 +14,7 @@ from torchvision.ops import batched_nms
 CATEGORIAS = tuple(range(1, int(environ.get('QUANTIDADE_DE_CATEGORIAS')) + 1))
 DISTANCIA_DA_AREA_DE_UNIAO = float(environ.get('DISTANCIA_DA_AREA_DE_UNIAO'))
 DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS = float(environ.get('DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS'))
+DISTANCIA_MINIMA_CENTROS = float(environ.get('DISTANCIA_MINIMA_CENTROS'))
 
 
 def aplicar_batched_nms(predicoes: Union[dict, list]) -> Optional[list]:
@@ -168,7 +169,7 @@ def obter_quantidade_de_acertos(matriz_de_distancias: array) -> int:
     row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
     acertos = list()
     for row, col in zip(row_ind, col_ind):
-        if matriz_de_distancias[row][col] <= float(environ.get('DISTANCIA_MINIMA_CENTROS')):
+        if matriz_de_distancias[row][col] <= DISTANCIA_MINIMA_CENTROS:
             acertos.append(1)
     return len(acertos)
 
