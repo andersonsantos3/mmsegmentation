@@ -229,7 +229,17 @@ def converter_segmentacoes_para_o_padrao_de_deteccoes(
         anotacoes_subimagens: dict[str, list],
         deteccoes_subimagens: list[dict]
 ) -> dict[str, list]:
-    nomes_de_imagens_por_id = {imagem['id']: imagem['file_name'] for imagem in anotacoes_subimagens['images']}
+    nomes_de_imagens_por_id = dict()
+    for imagem in anotacoes_subimagens['images']:
+        file_name = imagem['file_name']
+        image_id = imagem['id']
+        if 'subimagem' in imagem.keys():
+            extensao = ''.join(file_name.split('.')[-1])
+            file_name = ''.join(file_name.split('.')[:-1])
+            subimagem = imagem['subimagem']
+            file_name = '_'.join([file_name] + list(map(str, subimagem))) + '.' + extensao
+        nomes_de_imagens_por_id[image_id] = file_name
+
     deteccoes_subimagens_ = dict()
     for deteccao_subimagem in deteccoes_subimagens:
         image_id = deteccao_subimagem['image_id']
