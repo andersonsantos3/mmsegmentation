@@ -516,6 +516,7 @@ def unir_deteccoes_horizontalmente(df_uniao: DataFrame) -> DataFrame:
 
                 xmin_, ymin_, xmax_, ymax_ = box_2['boxes']
                 box_2_pontuacao = box_2['scores']
+                nova_pontuacao = max(box_1_pontuacao, box_2_pontuacao)
                 box_2_pontos_medios = [(xmin_, (ymin_ + ymax_) / 2), (xmax_, (ymin_ + ymax_) / 2)]
 
                 # a distância é calculada a partir dos pontos médios das box_1 e box_2
@@ -530,13 +531,7 @@ def unir_deteccoes_horizontalmente(df_uniao: DataFrame) -> DataFrame:
                         xmin, ymin, xmax, ymax, xmin_, ymin_,xmax_, ymax_
                     )
                     box_ = [novo_xmin, novo_ymin, novo_xmax, novo_ymax]
-                    tem_interseccao = any([
-                        verificar_interseccao(box_, area_1),
-                        verificar_interseccao(box_, area_2),
-                        verificar_interseccao(box_, area_3),
-                        verificar_interseccao(box_, area_4)
-                    ])
-                    nova_pontuacao = max(box_1_pontuacao, box_2_pontuacao)
+                    tem_interseccao = verificar_interseccao_entre_bbox_e_subimagem(box_, area_1, area_2, area_3, area_4)
 
                     # se não houver intersecção entre a nova subimagem e a nova detecção unida, então é necessário
                     # adicionar a nova detecção ao df_deteccoes_unidas_horizontalmente e remover as duas detecções
@@ -661,6 +656,7 @@ def unir_deteccoes_verticalmente(df_uniao: DataFrame) -> DataFrame:
 
                 xmin_, ymin_, xmax_, ymax_ = box_2['boxes']
                 box_2_pontuacao = box_2['scores']
+                nova_pontuacao = max(box_1_pontuacao, box_2_pontuacao)
                 box_2_pontos_medios = [((xmin_ + xmax_) / 2, ymin_), ((xmin_ + xmax_) / 2, ymax_)]
 
                 # a distância é calculada a partir dos pontos médios das box_1 e box_2
@@ -675,13 +671,7 @@ def unir_deteccoes_verticalmente(df_uniao: DataFrame) -> DataFrame:
                         xmin, ymin, xmax, ymax, xmin_, ymin_, xmax_, ymax_
                     )
                     box_ = [novo_xmin, novo_ymin, novo_xmax, novo_ymax]
-                    tem_interseccao = any([
-                        verificar_interseccao(box_, area_1),
-                        verificar_interseccao(box_, area_2),
-                        verificar_interseccao(box_, area_3),
-                        verificar_interseccao(box_, area_4)
-                    ])
-                    nova_pontuacao = max(box_1_pontuacao, box_2_pontuacao)
+                    tem_interseccao = verificar_interseccao_entre_bbox_e_subimagem(box_, area_1, area_2, area_3, area_4)
                     if not tem_interseccao:
                         df_deteccoes_unidas = concat([
                             df_deteccoes_unidas,
@@ -734,6 +724,22 @@ def verificar_interseccao(retangulo_1: list, retangulo_2: list) -> bool:
     ymax = min(retangulo_1[3], retangulo_2[3])
     area_interseccao = max(0, xmax - xmin) * max(0, ymax - ymin)
     return area_interseccao > 0
+
+
+def verificar_interseccao_entre_bbox_e_subimagem(
+        box_: list[Union[int, float]],
+        area_1: list[int],
+        area_2: list[int],
+        area_3: list[int],
+        area_4: list[int]
+) -> bool:
+    tem_interseccao = any([
+        verificar_interseccao(box_, area_1),
+        verificar_interseccao(box_, area_2),
+        verificar_interseccao(box_, area_3),
+        verificar_interseccao(box_, area_4)
+    ])
+    return tem_interseccao
 
 
 def main():
