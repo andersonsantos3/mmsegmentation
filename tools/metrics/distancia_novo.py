@@ -82,7 +82,7 @@ def calcular_distancia(
     return sqrt((ponto_b[0] - ponto_a[0]) ** 2 + (ponto_b[1] - ponto_a[1]) ** 2)
 
 
-def calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens: dict, deteccoes_imagens: dict) -> float:
+def calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens: dict, deteccoes_imagens: Union[dict, list]) -> float:
     return calcular_metrica_nas_subimagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
 
 
@@ -90,9 +90,19 @@ def calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens: dict, deteccoe
     return calcular_metrica_nas_subimagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
 
 
-def calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens: dict, deteccoes_subimagens: dict) -> float:
+def calcular_metrica_nas_subimagens_com_categoria(
+        anotacoes_subimagens: dict,
+        deteccoes_subimagens: Union[dict, list]
+) -> float:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
     percentual_de_acerto_por_subimagem = list()
+
+    if isinstance(deteccoes_subimagens, list):
+        deteccoes_subimagens = converter_segmentacoes_para_o_padrao_de_deteccoes(
+            anotacoes_subimagens,
+            deteccoes_subimagens
+        )
+
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
         predicoes = deteccoes_subimagens.get(nome_imagem)
         if existe_bbox(anotacoes) and existe_bbox(predicoes):
@@ -762,7 +772,7 @@ def main():
     print('Pontuação nas imagens considerando localização e categorias')
     print('Detecção: {}\t Segmentação: {}\n'.format(
         calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, deteccoes_imagens),
-        'Implementando...'
+        calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
     ))
 
     print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
