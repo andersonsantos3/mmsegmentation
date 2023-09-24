@@ -152,13 +152,9 @@ def calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes: list, p
                 for j, centro_j in enumerate(categoria_predicao):
                     distancia = calcular_distancia(centro_i, centro_j)
                     matriz_de_distancias[i][j] = distancia
-            row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
-            acertos = list()
-            for row, col in zip(row_ind, col_ind):
-                if matriz_de_distancias[row][col] <= float(environ.get('DISTANCIA_MINIMA_CENTROS')):
-                    acertos.append(1)
+            quantidade_de_acertos = obter_quantidade_de_acertos(matriz_de_distancias)
             maior = max(len(categoria_anotacao), len(categoria_predicao))
-            percentuais_de_acertos_por_categoria.append(len(acertos) / maior)
+            percentuais_de_acertos_por_categoria.append(quantidade_de_acertos / maior)
         elif categoria_anotacao and not categoria_predicao:
             percentuais_de_acertos_por_categoria.append(0)
         elif not categoria_anotacao and not categoria_predicao:
@@ -166,6 +162,15 @@ def calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes: list, p
         elif not categoria_anotacao and categoria_predicao:
             percentuais_de_acertos_por_categoria.append(0)
     return mean(percentuais_de_acertos_por_categoria)
+
+
+def obter_quantidade_de_acertos(matriz_de_distancias: array) -> int:
+    row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
+    acertos = list()
+    for row, col in zip(row_ind, col_ind):
+        if matriz_de_distancias[row][col] <= float(environ.get('DISTANCIA_MINIMA_CENTROS')):
+            acertos.append(1)
+    return len(acertos)
 
 
 def calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes: list, predicoes: list) -> float:
@@ -178,13 +183,9 @@ def calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes: list, p
         for box in categoria:
             centros_predicoes.append(calcular_centro(box))
     matriz_de_distancias = criar_matriz_de_distancias(centros_anotacoes, centros_predicoes)
-    row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
-    acertos = list()
-    for row, col in zip(row_ind, col_ind):
-        if matriz_de_distancias[row][col] <= float(environ.get('DISTANCIA_MINIMA_CENTROS')):
-            acertos.append(1)
+    quantidade_de_acertos = obter_quantidade_de_acertos(matriz_de_distancias)
     maior = max(len(centros_anotacoes), len(centros_predicoes))
-    return len(acertos) / maior
+    return quantidade_de_acertos / maior
 
 
 def carregar_json(caminho_arquivo: str) -> Union[dict, list]:
