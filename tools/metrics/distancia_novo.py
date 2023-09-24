@@ -799,7 +799,7 @@ def main():
     print('Pontuação nas subimagens considerando localização e categorias')
     print('Detecção: {}\t Segmentação: {}\n'.format(
         calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens),
-        'Implementando...'
+        calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
     ))
 
 
