@@ -114,19 +114,11 @@ def calcular_metrica_nas_subimagens_sem_categoria(
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
     percentual_de_acerto_por_subimagem = list()
 
-    deteccoes_subimagens_ = dict()
     if isinstance(deteccoes_subimagens, list):
-        nomes_de_imagens_por_id = {imagem['id']: imagem['file_name'] for imagem in anotacoes_subimagens['images']}
-        for deteccao_subimagem in deteccoes_subimagens:
-            image_id = deteccao_subimagem['image_id']
-            file_name = nomes_de_imagens_por_id[image_id]
-            if file_name not in deteccoes_subimagens_:
-                deteccoes_subimagens_[file_name] = [[] for _ in range(len(CATEGORIAS))]
-            category = deteccao_subimagem['category_id'] - 1
-            bbox = deteccao_subimagem['bbox']
-            score = deteccao_subimagem['score']
-            deteccoes_subimagens_[file_name][category].append(bbox + [score])
-        deteccoes_subimagens = deteccoes_subimagens_
+        deteccoes_subimagens = converter_segmentacoes_para_o_padrao_de_deteccoes(
+            anotacoes_subimagens,
+            deteccoes_subimagens
+        )
 
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
         predicoes = deteccoes_subimagens.get(nome_imagem)
@@ -221,6 +213,24 @@ def converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens: dict) -
         subimagem = anotacoes_padronizadas_por_id_da_imagem[id_da_imagem]
         anotacoes_padronizadas[subimagem][categoria_da_anotacao - 1].append(bbox)
     return anotacoes_padronizadas
+
+
+def converter_segmentacoes_para_o_padrao_de_deteccoes(
+        anotacoes_subimagens: dict[str, list],
+        deteccoes_subimagens: list[dict]
+) -> dict[str, list]:
+    nomes_de_imagens_por_id = {imagem['id']: imagem['file_name'] for imagem in anotacoes_subimagens['images']}
+    deteccoes_subimagens_ = dict()
+    for deteccao_subimagem in deteccoes_subimagens:
+        image_id = deteccao_subimagem['image_id']
+        file_name = nomes_de_imagens_por_id[image_id]
+        if file_name not in deteccoes_subimagens_:
+            deteccoes_subimagens_[file_name] = [[] for _ in range(len(CATEGORIAS))]
+        category = deteccao_subimagem['category_id'] - 1
+        bbox = deteccao_subimagem['bbox']
+        score = deteccao_subimagem['score']
+        deteccoes_subimagens_[file_name][category].append(bbox + [score])
+    return deteccoes_subimagens_
 
 
 def criar_matriz_de_distancias(
