@@ -104,7 +104,7 @@ def calcular_metrica_nas_subimagens_com_categoria(
         )
 
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
-        predicoes = deteccoes_subimagens.get(nome_imagem)
+        predicoes = deteccoes_subimagens.get(nome_imagem, list())
         if existe_bbox(anotacoes) and existe_bbox(predicoes):
             percentual_de_acerto = calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes, predicoes)
             percentual_de_acerto_por_subimagem.append(percentual_de_acerto)
@@ -131,7 +131,7 @@ def calcular_metrica_nas_subimagens_sem_categoria(
         )
 
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
-        predicoes = deteccoes_subimagens.get(nome_imagem)
+        predicoes = deteccoes_subimagens.get(nome_imagem, list())
         if existe_bbox(anotacoes) and existe_bbox(predicoes):
             percentual_de_acerto = calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes, predicoes)
             percentual_de_acerto_por_subimagem.append(percentual_de_acerto)
