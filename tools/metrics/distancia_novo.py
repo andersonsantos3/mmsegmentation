@@ -492,17 +492,8 @@ def unir_deteccoes_horizontalmente(df_uniao: DataFrame) -> DataFrame:
 
                 if (dist_p2_p3 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS
                         or dist_p3_p2 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS):
-                    # une as subimagens e cria uma nova
-                    nova_subimagem_xmin = min(box_1_subimagem[0], box_2_subimagem[0])
-                    nova_subimagem_ymin = min(box_1_subimagem[1], box_2_subimagem[1])
-                    nova_subimagem_xmax = max(box_1_subimagem[2], box_2_subimagem[2])
-                    nova_subimagem_ymax = max(box_1_subimagem[3], box_2_subimagem[3])
-                    nova_subimagem = [
-                        nova_subimagem_xmin,
-                        nova_subimagem_ymin,
-                        nova_subimagem_xmax,
-                        nova_subimagem_ymax
-                    ]
+
+                    nova_subimagem = unir_subimagens(box_1_subimagem, box_2_subimagem)
 
                     # une as detecções e cria uma nova
                     novo_xmin = min(xmin, xmin_)
@@ -595,6 +586,17 @@ def unir_deteccoes_horizontalmente(df_uniao: DataFrame) -> DataFrame:
     return df_deteccoes_unidas_horizontalmente
 
 
+def unir_subimagens(box_1_subimagem: list[int], box_2_subimagem: list[int]) -> list[int]:
+    """Une as subimagens e cria uma nova"""
+
+    nova_subimagem_xmin = min(box_1_subimagem[0], box_2_subimagem[0])
+    nova_subimagem_ymin = min(box_1_subimagem[1], box_2_subimagem[1])
+    nova_subimagem_xmax = max(box_1_subimagem[2], box_2_subimagem[2])
+    nova_subimagem_ymax = max(box_1_subimagem[3], box_2_subimagem[3])
+    nova_subimagem = [nova_subimagem_xmin, nova_subimagem_ymin, nova_subimagem_xmax, nova_subimagem_ymax ]
+    return nova_subimagem
+
+
 def unir_deteccoes_verticalmente(df_uniao: DataFrame) -> DataFrame:
     """Une detecções verticalmente próximas"""
 
@@ -654,16 +656,7 @@ def unir_deteccoes_verticalmente(df_uniao: DataFrame) -> DataFrame:
                 if (dist_p1_p4 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS
                         or dist_p4_p1 <= DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS):
                     # une as duas subimagens e cria uma nova
-                    nova_subimagem_xmin = min(box_1_subimagem[0], box_2_subimagem[0])
-                    nova_subimagem_ymin = min(box_1_subimagem[1], box_2_subimagem[1])
-                    nova_subimagem_xmax = max(box_1_subimagem[2], box_2_subimagem[2])
-                    nova_subimagem_ymax = max(box_1_subimagem[3], box_2_subimagem[3])
-                    nova_subimagem = [
-                        nova_subimagem_xmin,
-                        nova_subimagem_ymin,
-                        nova_subimagem_xmax,
-                        nova_subimagem_ymax
-                    ]
+                    nova_subimagem = unir_subimagens(box_1_subimagem, box_2_subimagem)
 
                     # une as duas detecções e cria uma nova
                     novo_xmin = min(xmin, xmin_)
