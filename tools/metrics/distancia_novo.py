@@ -86,7 +86,7 @@ def calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens: dict, deteccoe
     return calcular_metrica_nas_subimagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
 
 
-def calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens: dict, deteccoes_imagens: dict) -> float:
+def calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens: dict, deteccoes_imagens: Union[dict, list]) -> float:
     return calcular_metrica_nas_subimagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
 
 
@@ -107,9 +107,27 @@ def calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens: dict, de
     return round(mean(percentual_de_acerto_por_subimagem).item(), 3)
 
 
-def calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens: dict, deteccoes_subimagens: dict) -> float:
+def calcular_metrica_nas_subimagens_sem_categoria(
+        anotacoes_subimagens: dict,
+        deteccoes_subimagens: Union[dict, list]
+) -> float:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
     percentual_de_acerto_por_subimagem = list()
+
+    deteccoes_subimagens_ = dict()
+    if isinstance(deteccoes_subimagens, list):
+        nomes_de_imagens_por_id = {imagem['id']: imagem['file_name'] for imagem in anotacoes_subimagens['images']}
+        for deteccao_subimagem in deteccoes_subimagens:
+            image_id = deteccao_subimagem['image_id']
+            file_name = nomes_de_imagens_por_id[image_id]
+            if file_name not in deteccoes_subimagens_:
+                deteccoes_subimagens_[file_name] = [[] for _ in range(len(CATEGORIAS))]
+            category = deteccao_subimagem['category_id'] - 1
+            bbox = deteccao_subimagem['bbox']
+            score = deteccao_subimagem['score']
+            deteccoes_subimagens_[file_name][category].append(bbox + [score])
+        deteccoes_subimagens = deteccoes_subimagens_
+
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
         predicoes = deteccoes_subimagens.get(nome_imagem)
         if existe_bbox(anotacoes) and existe_bbox(predicoes):
@@ -728,7 +746,7 @@ def main():
     print('Pontuação nas imagens considerando apenas a localização e ignorando as categorias')
     print('Detecção: {}\t Segmentação: {}\n'.format(
         calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens),
-        calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, predicoes_segmentacao_imagens),
+        calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
     ))
 
     print('Pontuação nas imagens considerando localização e categorias')
