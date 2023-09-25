@@ -136,57 +136,86 @@ def calcular_metrica_nas_subimagens_sem_categoria(
 
 
 def calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes: list, predicoes: list) -> float:
+    boxes_das_anotacoes = [[] for _ in range(len(anotacoes))]
     centros_das_anotacoes = [[] for _ in range(len(anotacoes))]
     centros_das_predicoes = [[] for _ in range(len(predicoes))]
+    erros = [0 for _ in range(len(anotacoes))]
     for i, boxes in enumerate(anotacoes):
         for box in boxes:
+            boxes_das_anotacoes[i].append(box)
             centros_das_anotacoes[i].append(calcular_centro(box))
     for i, boxes in enumerate(predicoes):
         for box in boxes:
-            centros_das_predicoes[i].append(calcular_centro(box))
+            x, y = calcular_centro(box)
+            centro_valido = False
+            for box_anotacao in boxes_das_anotacoes[i]:
+                xmin, ymin, xmax, ymax = box_anotacao
+                if xmin < x < xmax and ymin < y < ymax:
+                    centro_valido = True
+            if centro_valido:
+                centros_das_predicoes[i].append((x, y))
+            else:
+                erros[i] += 1
 
-    percentuais_de_acertos_por_categoria = list()
-    for categoria_anotacao, categoria_predicao in zip(centros_das_anotacoes, centros_das_predicoes):
-        if categoria_anotacao and categoria_predicao:
-            matriz_de_distancias = zeros((len(categoria_anotacao), len(categoria_predicao)))
-            for i, centro_i in enumerate(categoria_anotacao):
-                for j, centro_j in enumerate(categoria_predicao):
-                    distancia = calcular_distancia(centro_i, centro_j)
+    percentuais_de_acertos_por_categoria = [[] for _ in range(len(anotacoes))]
+    for categoria, centros_de_anotacoes_por_categoria, centros_de_predicoes_por_categoria in zip(
+            range(len(anotacoes)), centros_das_anotacoes, centros_das_predicoes
+    ):
+        if centros_de_anotacoes_por_categoria and centros_de_predicoes_por_categoria:
+            matriz_de_distancias = zeros((len(centros_de_anotacoes_por_categoria), len(centros_de_predicoes_por_categoria)))
+            for i, centro_anotacao in enumerate(centros_de_anotacoes_por_categoria):
+                for j, centro_predicao in enumerate(centros_de_predicoes_por_categoria):
+                    distancia = calcular_distancia(centro_anotacao, centro_predicao)
                     matriz_de_distancias[i][j] = distancia
-            quantidade_de_acertos = obter_quantidade_de_acertos(matriz_de_distancias)
-            maior = max(len(categoria_anotacao), len(categoria_predicao))
-            percentuais_de_acertos_por_categoria.append(quantidade_de_acertos / maior)
-        elif categoria_anotacao and not categoria_predicao:
-            percentuais_de_acertos_por_categoria.append(0)
-        elif not categoria_anotacao and not categoria_predicao:
-            percentuais_de_acertos_por_categoria.append(1)
-        elif not categoria_anotacao and categoria_predicao:
-            percentuais_de_acertos_por_categoria.append(0)
+            quantidade_de_acertos, erros_ = obter_quantidade_de_acertos_e_erros(matriz_de_distancias)
+            quantidade_de_erros = erros[categoria] + erros_
+            percentual_de_acerto = quantidade_de_acertos / (quantidade_de_acertos + quantidade_de_erros)
+            percentuais_de_acertos_por_categoria[categoria].append(percentual_de_acerto)
+        elif centros_de_anotacoes_por_categoria and not centros_de_predicoes_por_categoria:
+            percentuais_de_acertos_por_categoria[categoria].append(0)
+        elif not centros_de_anotacoes_por_categoria and not centros_de_predicoes_por_categoria:
+            percentuais_de_acertos_por_categoria[categoria].append(1)
+        elif not centros_de_anotacoes_por_categoria and centros_de_predicoes_por_categoria:
+            percentuais_de_acertos_por_categoria[categoria].append(0)
+    for i, percentual_de_acerto in enumerate(percentuais_de_acertos_por_categoria):
+        percentuais_de_acertos_por_categoria[i] = mean(percentual_de_acerto)
     return mean(percentuais_de_acertos_por_categoria)
 
 
-def obter_quantidade_de_acertos(matriz_de_distancias: array) -> int:
+def obter_quantidade_de_acertos_e_erros(matriz_de_distancias: array) -> tuple[int, int]:
     row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
-    acertos = list()
-    for row, col in zip(row_ind, col_ind):
-        if matriz_de_distancias[row][col] <= DISTANCIA_MINIMA_CENTROS:
-            acertos.append(1)
-    return len(acertos)
+    acertos = len(row_ind)
+    erros = max(matriz_de_distancias.shape) - min(matriz_de_distancias.shape)
+    return acertos, erros
 
 
 def calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes: list, predicoes: list) -> float:
+    boxes_anotacoes = list()
     centros_anotacoes = list()
     centros_predicoes = list()
+    erros = 0
     for categoria in anotacoes:
         for box in categoria:
+            boxes_anotacoes.append(box)
             centros_anotacoes.append(calcular_centro(box))
     for categoria in predicoes:
         for box in categoria:
-            centros_predicoes.append(calcular_centro(box))
+            x, y = calcular_centro(box)
+            centro_valido = False
+            for box_anotacao in boxes_anotacoes:
+                xmin, ymin, xmax, ymax = box_anotacao
+                if xmin < x < xmax and ymin < y < ymax:
+                    centro_valido = True
+            if centro_valido:
+                centros_predicoes.append((x, y))
+            else:
+                erros += 1
+
     matriz_de_distancias = criar_matriz_de_distancias(centros_anotacoes, centros_predicoes)
-    quantidade_de_acertos = obter_quantidade_de_acertos(matriz_de_distancias)
-    maior = max(len(centros_anotacoes), len(centros_predicoes))
-    return quantidade_de_acertos / maior
+    quantidade_de_acertos, erros_ = obter_quantidade_de_acertos_e_erros(matriz_de_distancias)
+    quantidade_de_erros = erros + erros_
+    percentual_de_acerto = quantidade_de_acertos / (quantidade_de_acertos + quantidade_de_erros)
+    return percentual_de_acerto
 
 
 def carregar_json(caminho_arquivo: str) -> Union[dict, list]:
