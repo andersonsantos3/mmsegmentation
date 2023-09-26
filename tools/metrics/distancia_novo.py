@@ -73,20 +73,28 @@ def calcular_distancia(
     return sqrt((ponto_b[0] - ponto_a[0]) ** 2 + (ponto_b[1] - ponto_a[1]) ** 2)
 
 
-def calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens: dict, deteccoes_imagens: Union[dict, list]) -> float:
+def calcular_metrica_nas_imagens_com_categoria(
+        anotacoes_imagens: dict,
+        deteccoes_imagens: Union[dict, list]
+) -> tuple[float, float, float]:
     return calcular_metrica_nas_subimagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
 
 
-def calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens: dict, deteccoes_imagens: Union[dict, list]) -> float:
-    return calcular_metrica_nas_subimagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
+def calcular_metrica_nas_imagens_sem_categoria(
+        anotacoes_imagens: dict,
+        deteccoes_imagens: Union[dict, list]
+) -> tuple[float, float, float]:
+    return calcular_metricas_nas_subimagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
 
 
 def calcular_metrica_nas_subimagens_com_categoria(
         anotacoes_subimagens: dict,
         deteccoes_subimagens: Union[dict, list]
-) -> float:
+) -> tuple[float, float, float]:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
-    percentual_de_acerto_por_subimagem = list()
+    falsos_negativos = 0
+    falsos_positivos = 0
+    verdadeiros_positivos = 0
 
     if isinstance(deteccoes_subimagens, list):
         deteccoes_subimagens = converter_segmentacoes_para_o_padrao_de_deteccoes(
@@ -96,24 +104,31 @@ def calcular_metrica_nas_subimagens_com_categoria(
 
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
         predicoes = deteccoes_subimagens.get(nome_imagem, list())
-        if existe_bbox(anotacoes) and existe_bbox(predicoes):
-            percentual_de_acerto = calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes, predicoes)
-            percentual_de_acerto_por_subimagem.append(percentual_de_acerto)
-        elif existe_bbox(anotacoes) and not existe_bbox(predicoes):
-            percentual_de_acerto_por_subimagem.append(0)
-        elif not existe_bbox(anotacoes) and not existe_bbox(predicoes):
-            percentual_de_acerto_por_subimagem.append(1)
-        elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
-            percentual_de_acerto_por_subimagem.append(0)
-    return round(mean(percentual_de_acerto_por_subimagem).item(), 3)
+        todas_anotacoes = [anotacao for anotacoes_por_categoria in anotacoes for anotacao in anotacoes_por_categoria]
+        todas_predicoes = [predicao for predicoes_por_categoria in predicoes for predicao in predicoes_por_categoria]
+        if todas_anotacoes and todas_predicoes:
+            fn, fp, vp = calcular_metricas_nas_subimagem_com_categoria(anotacoes, predicoes)
+            falsos_negativos += fn
+            falsos_positivos += fp
+            verdadeiros_positivos += vp
+        elif todas_anotacoes and not todas_predicoes:
+            falsos_negativos += len(todas_anotacoes)
+        elif not todas_anotacoes and todas_predicoes:
+            falsos_positivos += len(todas_predicoes)
+    precisao = verdadeiros_positivos / (verdadeiros_positivos + falsos_positivos)
+    revocacao = verdadeiros_positivos / (verdadeiros_positivos + falsos_negativos)
+    f_score = 2 * (precisao * revocacao) / (precisao + revocacao)
+    return round(precisao, 3), round(revocacao, 3), round(f_score, 3)
 
 
-def calcular_metrica_nas_subimagens_sem_categoria(
+def calcular_metricas_nas_subimagens_sem_categoria(
         anotacoes_subimagens: dict,
         deteccoes_subimagens: Union[dict, list]
-) -> float:
+) -> tuple[float, float, float]:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
-    percentual_de_acerto_por_subimagem = list()
+    falsos_negativos = 0
+    falsos_positivos = 0
+    verdadeiros_positivos = 0
 
     if isinstance(deteccoes_subimagens, list):
         deteccoes_subimagens = converter_segmentacoes_para_o_padrao_de_deteccoes(
@@ -123,41 +138,36 @@ def calcular_metrica_nas_subimagens_sem_categoria(
 
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
         predicoes = deteccoes_subimagens.get(nome_imagem, list())
-        if existe_bbox(anotacoes) and existe_bbox(predicoes):
-            percentual_de_acerto = calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes, predicoes)
-            percentual_de_acerto_por_subimagem.append(percentual_de_acerto)
-        elif existe_bbox(anotacoes) and not existe_bbox(predicoes):
-            percentual_de_acerto_por_subimagem.append(0)
-        elif not existe_bbox(anotacoes) and not existe_bbox(predicoes):
-            percentual_de_acerto_por_subimagem.append(1)
-        elif not existe_bbox(anotacoes) and existe_bbox(predicoes):
-            percentual_de_acerto_por_subimagem.append(0)
-    return round(mean(percentual_de_acerto_por_subimagem).item(), 3)
+        todas_anotacoes = [anotacao for anotacoes_por_categoria in anotacoes for anotacao in anotacoes_por_categoria]
+        todas_predicoes = [predicao for predicoes_por_categoria in predicoes for predicao in predicoes_por_categoria]
+        if todas_anotacoes and todas_predicoes:
+            fn, fp, vp = calcular_metricas_por_subimagem_sem_categoria(todas_anotacoes, todas_predicoes)
+            falsos_negativos += fn
+            falsos_positivos += fp
+            verdadeiros_positivos += vp
+        elif todas_anotacoes and not todas_predicoes:
+            falsos_negativos += len(todas_anotacoes)
+        elif not todas_anotacoes and todas_predicoes:
+            falsos_positivos += len(todas_predicoes)
+    precisao = verdadeiros_positivos / (verdadeiros_positivos + falsos_positivos)
+    revocacao = verdadeiros_positivos / (verdadeiros_positivos + falsos_negativos)
+    f_score = 2 * (precisao * revocacao) / (precisao + revocacao)
+    return round(precisao, 3), round(revocacao, 3), round(f_score, 3)
 
 
-def calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes: list, predicoes: list) -> float:
-    boxes_das_anotacoes = [[] for _ in range(len(anotacoes))]
+def calcular_metricas_nas_subimagem_com_categoria(anotacoes: list, predicoes: list) -> tuple[float, float, float]:
     centros_das_anotacoes = [[] for _ in range(len(anotacoes))]
     centros_das_predicoes = [[] for _ in range(len(predicoes))]
-    erros = [0 for _ in range(len(anotacoes))]
+    falsos_negativos = 0
+    falsos_positivos = 0
+    verdadeiros_positivos = 0
     for i, boxes in enumerate(anotacoes):
         for box in boxes:
-            boxes_das_anotacoes[i].append(box)
             centros_das_anotacoes[i].append(calcular_centro(box))
     for i, boxes in enumerate(predicoes):
         for box in boxes:
-            x, y = calcular_centro(box)
-            centro_valido = False
-            for box_anotacao in boxes_das_anotacoes[i]:
-                xmin, ymin, xmax, ymax = box_anotacao
-                if xmin < x < xmax and ymin < y < ymax:
-                    centro_valido = True
-            if centro_valido:
-                centros_das_predicoes[i].append((x, y))
-            else:
-                erros[i] += 1
+            centros_das_predicoes[i].append(calcular_centro(box))
 
-    percentuais_de_acertos_por_categoria = [[] for _ in range(len(anotacoes))]
     for categoria, centros_de_anotacoes_por_categoria, centros_de_predicoes_por_categoria in zip(
             range(len(anotacoes)), centros_das_anotacoes, centros_das_predicoes
     ):
@@ -167,55 +177,41 @@ def calcular_percentual_de_acerto_por_subimagem_com_categoria(anotacoes: list, p
                 for j, centro_predicao in enumerate(centros_de_predicoes_por_categoria):
                     distancia = calcular_distancia(centro_anotacao, centro_predicao)
                     matriz_de_distancias[i][j] = distancia
-            quantidade_de_acertos, erros_ = obter_quantidade_de_acertos_e_erros(matriz_de_distancias)
-            quantidade_de_erros = erros[categoria] + erros_
-            percentual_de_acerto = quantidade_de_acertos / (quantidade_de_acertos + quantidade_de_erros)
-            percentuais_de_acertos_por_categoria[categoria].append(percentual_de_acerto)
+            row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
+            for row, col in zip(row_ind, col_ind):
+                xmin, ymin, xmax, ymax = anotacoes[categoria][row]
+                x, y = centros_de_predicoes_por_categoria[col]
+                if xmin <= x < xmax and ymin <= y < ymax:
+                    verdadeiros_positivos += 1
+                else:
+                    falsos_positivos += 1
+            falsos_negativos += len(set(range(len(row_ind))).difference(set(row_ind)))
+            falsos_positivos += len(set(range(len(col_ind))).difference(set(col_ind)))
         elif centros_de_anotacoes_por_categoria and not centros_de_predicoes_por_categoria:
-            percentuais_de_acertos_por_categoria[categoria].append(0)
-        elif not centros_de_anotacoes_por_categoria and not centros_de_predicoes_por_categoria:
-            percentuais_de_acertos_por_categoria[categoria].append(1)
+            falsos_negativos += len(centros_de_anotacoes_por_categoria)
         elif not centros_de_anotacoes_por_categoria and centros_de_predicoes_por_categoria:
-            percentuais_de_acertos_por_categoria[categoria].append(0)
-    for i, percentual_de_acerto in enumerate(percentuais_de_acertos_por_categoria):
-        percentuais_de_acertos_por_categoria[i] = mean(percentual_de_acerto)
-    return mean(percentuais_de_acertos_por_categoria)
+            falsos_positivos += len(centros_de_predicoes_por_categoria)
+    return falsos_negativos, falsos_positivos, verdadeiros_positivos
 
 
-def obter_quantidade_de_acertos_e_erros(matriz_de_distancias: array) -> tuple[int, int]:
-    row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
-    acertos = len(row_ind)
-    erros = max(matriz_de_distancias.shape) - min(matriz_de_distancias.shape)
-    return acertos, erros
-
-
-def calcular_percentual_de_acerto_por_subimagem_sem_categoria(anotacoes: list, predicoes: list) -> float:
-    boxes_anotacoes = list()
-    centros_anotacoes = list()
-    centros_predicoes = list()
-    erros = 0
-    for categoria in anotacoes:
-        for box in categoria:
-            boxes_anotacoes.append(box)
-            centros_anotacoes.append(calcular_centro(box))
-    for categoria in predicoes:
-        for box in categoria:
-            x, y = calcular_centro(box)
-            centro_valido = False
-            for box_anotacao in boxes_anotacoes:
-                xmin, ymin, xmax, ymax = box_anotacao
-                if xmin < x < xmax and ymin < y < ymax:
-                    centro_valido = True
-            if centro_valido:
-                centros_predicoes.append((x, y))
-            else:
-                erros += 1
-
+def calcular_metricas_por_subimagem_sem_categoria(anotacoes: list, predicoes: list) -> tuple[int, int, int]:
+    centros_anotacoes = [calcular_centro(box) for box in anotacoes]
+    centros_predicoes = [calcular_centro(box) for box in predicoes]
+    falsos_negativos = 0
+    falsos_positivos = 0
+    verdadeiros_positivos = 0
     matriz_de_distancias = criar_matriz_de_distancias(centros_anotacoes, centros_predicoes)
-    quantidade_de_acertos, erros_ = obter_quantidade_de_acertos_e_erros(matriz_de_distancias)
-    quantidade_de_erros = erros + erros_
-    percentual_de_acerto = quantidade_de_acertos / (quantidade_de_acertos + quantidade_de_erros)
-    return percentual_de_acerto
+    row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
+    for row, col in zip(row_ind, col_ind):
+        xmin, ymin, xmax, ymax = anotacoes[row]
+        x, y = centros_predicoes[col]
+        if xmin <= x < xmax and ymin <= y < ymax:
+            verdadeiros_positivos += 1
+        else:
+            falsos_positivos += 1
+    falsos_negativos += len(set(range(len(row_ind))).difference(set(row_ind)))
+    falsos_positivos += len(set(range(len(col_ind))).difference(set(col_ind)))
+    return falsos_negativos, falsos_positivos, verdadeiros_positivos
 
 
 def carregar_json(caminho_arquivo: str) -> Union[dict, list]:
@@ -793,28 +789,28 @@ def main():
     deteccoes_imagens = unir_deteccoes_das_subimagens(deteccoes_subimagens)
 
     print('Pontuação nas imagens considerando apenas a localização e ignorando as categorias')
-    print('Detecção: {}\t Segmentação: {}\n'.format(
-        calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens),
-        calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
-    ))
+    p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
+    print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+    p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
+    print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
 
     print('Pontuação nas imagens considerando localização e categorias')
-    print('Detecção: {}\t Segmentação: {}\n'.format(
-        calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, deteccoes_imagens),
-        calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
-    ))
+    p, r, f = calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
+    print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+    p, r, f = calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
+    print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
 
     print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
-    print('Detecção: {}\t Segmentação: {}\n'.format(
-        calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens),
-        calcular_metrica_nas_subimagens_sem_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
-    ))
+    p, r, f = calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens)
+    print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+    p, r, f = calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
+    print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
 
     print('Pontuação nas subimagens considerando localização e categorias')
-    print('Detecção: {}\t Segmentação: {}\n'.format(
-        calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens),
-        calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
-    ))
+    p, r, f = calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens)
+    print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+    p, r, f = calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
+    print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
 
 
 if __name__ == '__main__':
