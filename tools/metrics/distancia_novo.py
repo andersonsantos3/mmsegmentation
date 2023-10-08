@@ -124,7 +124,7 @@ def calcular_metrica_nas_subimagens_com_categoria(
         todas_anotacoes = [anotacao for anotacoes_por_categoria in anotacoes for anotacao in anotacoes_por_categoria]
         todas_predicoes = [predicao for predicoes_por_categoria in predicoes for predicao in predicoes_por_categoria]
         if todas_anotacoes and todas_predicoes:
-            fn, fp, vp = calcular_metricas_nas_subimagem_com_categoria(anotacoes, predicoes)
+            fn, fp, vp = calcular_metricas_nas_subimagens_com_categoria(anotacoes, predicoes)
             falsos_negativos += fn
             falsos_positivos += fp
             verdadeiros_positivos += vp
@@ -175,7 +175,7 @@ def calcular_metricas_nas_subimagens_sem_categoria(
     return round(precisao, 3), round(revocacao, 3), round(f_score, 3)
 
 
-def calcular_metricas_nas_subimagem_com_categoria(anotacoes: list, predicoes: list) -> tuple[float, float, float]:
+def calcular_metricas_nas_subimagens_com_categoria(anotacoes: list, predicoes: list) -> tuple[float, float, float]:
     centros_das_anotacoes = [[] for _ in range(len(anotacoes))]
     centros_das_predicoes = [[] for _ in range(len(predicoes))]
     falsos_negativos = 0
@@ -888,30 +888,40 @@ def main():
     deteccoes_imagens = unir_deteccoes_das_subimagens(deteccoes_subimagens)
 
     tipo_de_imagem = 'imagem'
-    com_categoria = False
-    tipo_de_resultado = 'deteccao'
-    print('Pontuação nas imagens considerando apenas a localização e ignorando as categorias')
-    p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
-    print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
-    tipo_de_resultado = 'segmentacao'
-    p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
-    print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
+    # com_categoria = False
+    # tipo_de_resultado = 'deteccao'
+    # print('Pontuação nas imagens considerando apenas a localização e ignorando as categorias')
+    # p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
+    # print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+    # tipo_de_resultado = 'segmentacao'
+    # p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
+    # print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
 
+    com_categoria = True
+    tipo_de_resultado = 'deteccao'
     print('Pontuação nas imagens considerando localização e categorias')
     p, r, f = calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
     print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+    tipo_de_resultado = 'segmentacao'
     p, r, f = calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
     print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
 
+    tipo_de_imagem = 'subimagem'
+    com_categoria = False
+    tipo_de_resultado = 'deteccao'
     print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
     p, r, f = calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens)
     print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+    tipo_de_resultado = 'segmentacao'
     p, r, f = calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
     print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
 
+    com_categoria = True
+    tipo_de_resultado = 'deteccao'
     print('Pontuação nas subimagens considerando localização e categorias')
     p, r, f = calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens)
     print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+    tipo_de_resultado = 'segmentacao'
     p, r, f = calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
     print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
 
