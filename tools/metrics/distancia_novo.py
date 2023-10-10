@@ -55,24 +55,17 @@ def aplicar_batched_nms(predicoes: Union[dict, list]) -> Optional[list]:
                 predicoes_[label].append(box)
             predicoes[chave] = predicoes_
     elif isinstance(predicoes, list):
-        boxes = list()
-        labels = list()
-        scores = list()
-        images_ids = list()
-        for predicao in predicoes:
-            boxes.append(predicao['bbox'])
-            labels.append(predicao['category_id'])
-            scores.append(predicao['score'])
-            images_ids.append(predicao['image_id'])
-        keep_idx = obter_ids_para_manter(boxes, labels, scores)
-        boxes = [boxes[idx] for idx in keep_idx]
-        labels = [labels[idx] for idx in keep_idx]
-        scores = [scores[idx] for idx in keep_idx]
-        images_ids = [images_ids[idx] for idx in keep_idx]
-
         predicoes_ = list()
-        for box, label, score, image_id in zip(boxes, labels, scores, images_ids):
-            predicoes_.append(dict(bbox=box, category_id=label, image_id=image_id, score=score))
+        predicoes_por_image_id = defaultdict(list)
+        for predicao in predicoes:
+            image_id = predicao['image_id']
+            predicoes_por_image_id[image_id].append(predicao)
+        for predicoes_da_imagem in predicoes_por_image_id.values():
+            boxes = [predicao['bbox'] for predicao in predicoes_da_imagem]
+            labels = [predicao['category_id'] for predicao in predicoes_da_imagem]
+            scores = [predicao['score'] for predicao in predicoes_da_imagem]
+            keep_idx = obter_ids_para_manter(boxes, labels, scores)
+            predicoes_ += [predicao for i, predicao in enumerate(predicoes_da_imagem) if i in keep_idx]
         return predicoes_
 
 
