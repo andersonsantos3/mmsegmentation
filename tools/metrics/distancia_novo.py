@@ -205,24 +205,24 @@ def calcular_metricas_nas_subimagens_com_categoria(anotacoes: list, predicoes: l
                     desenhos['fp']['anotacoes'].append(anotacoes[categoria][row])
                     desenhos['fp']['predicoes'].append(predicoes[categoria][col])
 
-            indices_falsos_negativos = set(range(len(row_ind))).difference(set(row_ind))
+            indices_falsos_negativos = set(range(len(anotacoes[categoria]))).difference(set(row_ind))
             for indice in indices_falsos_negativos:
+                falsos_negativos += 1
                 desenhos['fn']['anotacoes'].append(anotacoes[categoria][indice])
 
-            indices_falsos_positivos = set(range(len(col_ind))).difference(set(col_ind))
+            indices_falsos_positivos = set(range(len(predicoes[categoria]))).difference(set(col_ind))
             for indice in indices_falsos_positivos:
+                falsos_positivos += 1
                 desenhos['fp']['anotacoes'].append([])
                 desenhos['fp']['predicoes'].append(predicoes[categoria][indice])
 
-            falsos_negativos += len(set(range(len(row_ind))).difference(set(row_ind)))
-            falsos_positivos += len(set(range(len(col_ind))).difference(set(col_ind)))
         elif centros_de_anotacoes_por_categoria and not centros_de_predicoes_por_categoria:
-            falsos_negativos += len(centros_de_anotacoes_por_categoria)
             for indice in range(len(centros_de_anotacoes_por_categoria)):
+                falsos_negativos += 1
                 desenhos['fn']['anotacoes'].append(anotacoes[categoria][indice])
         elif not centros_de_anotacoes_por_categoria and centros_de_predicoes_por_categoria:
-            falsos_positivos += len(centros_de_predicoes_por_categoria)
             for indice in range(len(centros_de_predicoes_por_categoria)):
+                falsos_positivos += 1
                 desenhos['fp']['anotacoes'].append([])
                 desenhos['fp']['predicoes'].append(predicoes[categoria][indice])
     return falsos_negativos, falsos_positivos, verdadeiros_positivos
@@ -247,17 +247,17 @@ def calcular_metricas_por_subimagem_sem_categoria(anotacoes: list, predicoes: li
             falsos_positivos += 1
             desenhos['fp']['anotacoes'].append(anotacoes[row])
             desenhos['fp']['predicoes'].append(predicoes[col])
-    indices_falsos_negativos = set(range(len(row_ind))).difference(set(row_ind))
+    indices_falsos_negativos = set(range(len(anotacoes))).symmetric_difference(set(row_ind))
     for indice in indices_falsos_negativos:
+        falsos_negativos += 1
         desenhos['fn']['anotacoes'].append(anotacoes[indice])
 
-    indices_falsos_positivos = set(range(len(col_ind))).difference(set(col_ind))
+    indices_falsos_positivos = set(range(len(predicoes))).symmetric_difference(set(col_ind))
     for indice in indices_falsos_positivos:
+        falsos_positivos += 1
         desenhos['fp']['anotacoes'].append([])
         desenhos['fp']['predicoes'].append(predicoes[indice])
 
-    falsos_negativos += len(set(range(len(row_ind))).difference(set(row_ind)))
-    falsos_positivos += len(set(range(len(col_ind))).difference(set(col_ind)))
     return falsos_negativos, falsos_positivos, verdadeiros_positivos
 
 
