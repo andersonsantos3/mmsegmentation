@@ -218,8 +218,13 @@ def calcular_metricas_nas_subimagens_com_categoria(anotacoes: list, predicoes: l
             falsos_positivos += len(set(range(len(col_ind))).difference(set(col_ind)))
         elif centros_de_anotacoes_por_categoria and not centros_de_predicoes_por_categoria:
             falsos_negativos += len(centros_de_anotacoes_por_categoria)
+            for indice in range(len(centros_de_anotacoes_por_categoria)):
+                desenhos['fn']['anotacoes'].append(anotacoes[categoria][indice])
         elif not centros_de_anotacoes_por_categoria and centros_de_predicoes_por_categoria:
             falsos_positivos += len(centros_de_predicoes_por_categoria)
+            for indice in range(len(centros_de_predicoes_por_categoria)):
+                desenhos['fp']['anotacoes'].append([])
+                desenhos['fp']['predicoes'].append(predicoes[categoria][indice])
     return falsos_negativos, falsos_positivos, verdadeiros_positivos
 
 
