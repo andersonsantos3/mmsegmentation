@@ -5,7 +5,7 @@ from os import environ, makedirs
 from os.path import exists, join
 from typing import Optional, Union
 
-from numpy import array, sqrt, zeros
+from numpy import array, mean, sqrt, zeros
 from pandas import DataFrame, concat
 from scipy.optimize import linear_sum_assignment
 from torch import float32, int64, tensor
@@ -101,9 +101,9 @@ def calcular_metrica_nas_subimagens_com_categoria(
         deteccoes_subimagens: Union[dict, list]
 ) -> tuple[float, float, float]:
     anotacoes_convertidas = converter_anotacoes_para_o_padrao_de_deteccoes(anotacoes_subimagens)
-    falsos_negativos = 0
-    falsos_positivos = 0
-    verdadeiros_positivos = 0
+    falsos_negativos = [0 for _ in range(len(CATEGORIAS))]
+    falsos_positivos = [0 for _ in range(len(CATEGORIAS))]
+    verdadeiros_positivos = [0 for _ in range(len(CATEGORIAS))]
 
     if isinstance(deteccoes_subimagens, list):
         deteccoes_subimagens = converter_segmentacoes_para_o_padrao_de_deteccoes(
@@ -112,25 +112,45 @@ def calcular_metrica_nas_subimagens_com_categoria(
         )
 
     for nome_imagem, anotacoes in anotacoes_convertidas.items():
+        anotacoes_por_categoria = [[] for _ in range(len(CATEGORIAS))]
+        predicoes_por_categoria = [[] for _ in range(len(CATEGORIAS))]
+
         predicoes = deteccoes_subimagens.get(nome_imagem, list())
         todas_anotacoes = [anotacao for anotacoes_por_categoria in anotacoes for anotacao in anotacoes_por_categoria]
         todas_predicoes = [predicao for predicoes_por_categoria in predicoes for predicao in predicoes_por_categoria]
+
+        for i, boxes in enumerate(anotacoes):
+            for box in boxes:
+                anotacoes_por_categoria[i].append(calcular_centro(box))
+        for i, boxes in enumerate(predicoes):
+            for box in boxes:
+                predicoes_por_categoria[i].append(calcular_centro(box))
+
         if todas_anotacoes and todas_predicoes:
             fn, fp, vp = calcular_metricas_nas_subimagens_com_categoria(anotacoes, predicoes)
-            falsos_negativos += fn
-            falsos_positivos += fp
-            verdadeiros_positivos += vp
+            for i in range(len(fn)):
+                falsos_negativos[i] += fn[i]
+            for i in range(len(fp)):
+                falsos_positivos[i] += fp[i]
+            for i in range(len(vp)):
+                verdadeiros_positivos[i] += vp[i]
         elif todas_anotacoes and not todas_predicoes:
-            falsos_negativos += len(todas_anotacoes)
+            for i in range(len(CATEGORIAS)):
+                falsos_negativos[i] += len(anotacoes_por_categoria[i])
             desenhos['fn']['anotacoes'] += todas_anotacoes
         elif not todas_anotacoes and todas_predicoes:
-            falsos_positivos += len(todas_predicoes)
+            for i in range(len(CATEGORIAS)):
+                falsos_positivos[i] += len(predicoes_por_categoria[i])
             desenhos['fp']['predicoes'] += todas_predicoes
         desenhar(nome_imagem)
-    precisao = verdadeiros_positivos / (verdadeiros_positivos + falsos_positivos)
-    revocacao = verdadeiros_positivos / (verdadeiros_positivos + falsos_negativos)
-    f_score = 2 * (precisao * revocacao) / (precisao + revocacao)
-    return round(precisao, 3), round(revocacao, 3), round(f_score, 3)
+    precisoes = [[] for _ in range(len(CATEGORIAS))]
+    revocacoes = [[] for _ in range(len(CATEGORIAS))]
+    f_scores = [[] for _ in range(len(CATEGORIAS))]
+    for i in range(len(CATEGORIAS)):
+        precisoes[i] = verdadeiros_positivos[i] / (verdadeiros_positivos[i] + falsos_positivos[i])
+        revocacoes[i] = verdadeiros_positivos[i] / (verdadeiros_positivos[i] + falsos_negativos[i])
+        f_scores[i] = 2 * (precisoes[i] * revocacoes[i]) / (precisoes[i] + revocacoes[i])
+    return round(mean(precisoes), 3), round(mean(revocacoes), 3), round(mean(f_scores), 3)
 
 
 def calcular_metricas_nas_subimagens_sem_categoria(
@@ -170,12 +190,15 @@ def calcular_metricas_nas_subimagens_sem_categoria(
     return round(precisao, 3), round(revocacao, 3), round(f_score, 3)
 
 
-def calcular_metricas_nas_subimagens_com_categoria(anotacoes: list, predicoes: list) -> tuple[float, float, float]:
+def calcular_metricas_nas_subimagens_com_categoria(
+        anotacoes: list,
+        predicoes: list
+) -> tuple[list[int], list[int], list[int]]:
     centros_das_anotacoes = [[] for _ in range(len(anotacoes))]
     centros_das_predicoes = [[] for _ in range(len(predicoes))]
-    falsos_negativos = 0
-    falsos_positivos = 0
-    verdadeiros_positivos = 0
+    falsos_negativos_por_categoria = [0 for _ in range(len(CATEGORIAS))]
+    falsos_positivos_por_categoria = [0 for _ in range(len(CATEGORIAS))]
+    verdadeiros_positivos_por_categoria = [0 for _ in range(len(CATEGORIAS))]
     for i, boxes in enumerate(anotacoes):
         for box in boxes:
             centros_das_anotacoes[i].append(calcular_centro(box))
@@ -197,35 +220,35 @@ def calcular_metricas_nas_subimagens_com_categoria(anotacoes: list, predicoes: l
                 xmin, ymin, xmax, ymax = anotacoes[categoria][row]
                 x, y = centros_de_predicoes_por_categoria[col]
                 if xmin <= x < xmax and ymin <= y < ymax:
-                    verdadeiros_positivos += 1
+                    verdadeiros_positivos_por_categoria[categoria] += 1
                     desenhos['vp']['anotacoes'].append(anotacoes[categoria][row])
                     desenhos['vp']['predicoes'].append(predicoes[categoria][col])
                 else:
-                    falsos_positivos += 1
+                    falsos_positivos_por_categoria[categoria] += 1
                     desenhos['fp']['anotacoes'].append(anotacoes[categoria][row])
                     desenhos['fp']['predicoes'].append(predicoes[categoria][col])
 
             indices_falsos_negativos = set(range(len(anotacoes[categoria]))).difference(set(row_ind))
             for indice in indices_falsos_negativos:
-                falsos_negativos += 1
+                falsos_negativos_por_categoria[categoria] += 1
                 desenhos['fn']['anotacoes'].append(anotacoes[categoria][indice])
 
             indices_falsos_positivos = set(range(len(predicoes[categoria]))).difference(set(col_ind))
             for indice in indices_falsos_positivos:
-                falsos_positivos += 1
+                falsos_positivos_por_categoria[categoria] += 1
                 desenhos['fp']['anotacoes'].append([])
                 desenhos['fp']['predicoes'].append(predicoes[categoria][indice])
 
         elif centros_de_anotacoes_por_categoria and not centros_de_predicoes_por_categoria:
             for indice in range(len(centros_de_anotacoes_por_categoria)):
-                falsos_negativos += 1
+                falsos_negativos_por_categoria[categoria] += 1
                 desenhos['fn']['anotacoes'].append(anotacoes[categoria][indice])
         elif not centros_de_anotacoes_por_categoria and centros_de_predicoes_por_categoria:
             for indice in range(len(centros_de_predicoes_por_categoria)):
-                falsos_positivos += 1
+                falsos_positivos_por_categoria[categoria] += 1
                 desenhos['fp']['anotacoes'].append([])
                 desenhos['fp']['predicoes'].append(predicoes[categoria][indice])
-    return falsos_negativos, falsos_positivos, verdadeiros_positivos
+    return falsos_negativos_por_categoria, falsos_positivos_por_categoria, verdadeiros_positivos_por_categoria
 
 
 def calcular_metricas_por_subimagem_sem_categoria(anotacoes: list, predicoes: list) -> tuple[int, int, int]:
@@ -257,7 +280,6 @@ def calcular_metricas_por_subimagem_sem_categoria(anotacoes: list, predicoes: li
         falsos_positivos += 1
         desenhos['fp']['anotacoes'].append([])
         desenhos['fp']['predicoes'].append(predicoes[indice])
-
     return falsos_negativos, falsos_positivos, verdadeiros_positivos
 
 
