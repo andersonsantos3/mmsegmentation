@@ -16,6 +16,7 @@ import cv2
 CATEGORIAS = tuple(range(1, int(environ.get('QUANTIDADE_DE_CATEGORIAS')) + 1))
 DISTANCIA_DA_AREA_DE_UNIAO = float(environ.get('DISTANCIA_DA_AREA_DE_UNIAO'))
 DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS = float(environ.get('DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS'))
+SALVAR_IMAGENS = bool(eval(environ.get('SALVAR_IMAGENS')))
 
 desenhos = dict(
     fn=dict(anotacoes=list(), predicoes=list()),
@@ -379,77 +380,78 @@ def criar_matriz_de_distancias(
 
 
 def desenhar(nome_imagem: str) -> None:
-    if com_categoria:
-        diretorio_de_saida = join(
-            environ.get('DIRETORIO_DE_SAIDA'),
-            tipo_de_imagem,
-            'com_categoria',
-            tipo_de_resultado,
-            tipo_de_metrica
-        )
-    else:
-        diretorio_de_saida = join(
-            environ.get('DIRETORIO_DE_SAIDA'),
-            tipo_de_imagem,
-            'sem_categoria',
-            tipo_de_resultado,
-            tipo_de_metrica
-        )
+    if SALVAR_IMAGENS:
+        if com_categoria:
+            diretorio_de_saida = join(
+                environ.get('DIRETORIO_DE_SAIDA'),
+                tipo_de_imagem,
+                'com_categoria',
+                tipo_de_resultado,
+                tipo_de_metrica
+            )
+        else:
+            diretorio_de_saida = join(
+                environ.get('DIRETORIO_DE_SAIDA'),
+                tipo_de_imagem,
+                'sem_categoria',
+                tipo_de_resultado,
+                tipo_de_metrica
+            )
 
-    diretorio_imagens = environ.get('DIRETORIO_DE_IMAGENS')
-    if tipo_de_imagem == 'subimagem':
-        diretorio_imagens = environ.get('DIRETORIO_DE_SUBIMAGENS')
+        diretorio_imagens = environ.get('DIRETORIO_DE_IMAGENS')
+        if tipo_de_imagem == 'subimagem':
+            diretorio_imagens = environ.get('DIRETORIO_DE_SUBIMAGENS')
 
-    imagem = cv2.imread(join(diretorio_imagens, nome_imagem))
+        imagem = cv2.imread(join(diretorio_imagens, nome_imagem))
 
-    anotacoes = desenhos['vp']['anotacoes']
-    predicoes = desenhos['vp']['predicoes']
-    for anotacao, predicao in zip(anotacoes, predicoes):
-        xmin, ymin, xmax, ymax = anotacao[:4]
-        imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_anotacao_vp, espessura, cv2.LINE_8)
-
-        xmin, ymin, xmax, ymax = [round(value) for value in predicao[:4]]
-        imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_predicao_vp, espessura, cv2.LINE_8)
-
-        centro_anotacao = [round(value) for value in calcular_centro(anotacao)]
-        centro_predicao = [round(value) for value in calcular_centro(predicao)]
-        imagem = cv2.line(imagem, centro_anotacao, centro_predicao, cor_de_linha, espessura, cv2.LINE_8)
-
-    # atualmente, os falsos positivos são considerados apenas quando o centro de uma predição está fora da box da
-    # anotação correspondente. Isso acontece pois não há falsos positivos sem anotações correspondentes, uma vez que
-    # não há imagens sem anotações
-    anotacoes = desenhos['fp']['anotacoes']
-    predicoes = desenhos['fp']['predicoes']
-    for anotacao, predicao in zip(anotacoes, predicoes):
-        if anotacao and predicao:
+        anotacoes = desenhos['vp']['anotacoes']
+        predicoes = desenhos['vp']['predicoes']
+        for anotacao, predicao in zip(anotacoes, predicoes):
             xmin, ymin, xmax, ymax = anotacao[:4]
             imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_anotacao_vp, espessura, cv2.LINE_8)
 
             xmin, ymin, xmax, ymax = [round(value) for value in predicao[:4]]
-            imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_predicao_fp, espessura, cv2.LINE_8)
+            imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_predicao_vp, espessura, cv2.LINE_8)
 
             centro_anotacao = [round(value) for value in calcular_centro(anotacao)]
             centro_predicao = [round(value) for value in calcular_centro(predicao)]
             imagem = cv2.line(imagem, centro_anotacao, centro_predicao, cor_de_linha, espessura, cv2.LINE_8)
-        elif not anotacao and predicao:
-            xmin, ymin, xmax, ymax = [round(value) for value in predicao[:4]]
-            imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_predicao_fp, espessura, cv2.LINE_8)
 
-    anotacoes = desenhos['fn']['anotacoes']
-    for anotacao in anotacoes:
-        xmin, ymin, xmax, ymax = anotacao[:4]
-        imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_anotacao_fn, espessura, cv2.LINE_8)
+        # atualmente, os falsos positivos são considerados apenas quando o centro de uma predição está fora da box da
+        # anotação correspondente. Isso acontece pois não há falsos positivos sem anotações correspondentes, uma vez que
+        # não há imagens sem anotações
+        anotacoes = desenhos['fp']['anotacoes']
+        predicoes = desenhos['fp']['predicoes']
+        for anotacao, predicao in zip(anotacoes, predicoes):
+            if anotacao and predicao:
+                xmin, ymin, xmax, ymax = anotacao[:4]
+                imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_anotacao_vp, espessura, cv2.LINE_8)
 
-    if not exists(diretorio_de_saida):
-        makedirs(diretorio_de_saida, exist_ok=True)
+                xmin, ymin, xmax, ymax = [round(value) for value in predicao[:4]]
+                imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_predicao_fp, espessura, cv2.LINE_8)
 
-    cv2.imwrite(join(diretorio_de_saida, nome_imagem), imagem)
-    desenhos['fn']['anotacoes'].clear()
-    desenhos['fn']['predicoes'].clear()
-    desenhos['fp']['anotacoes'].clear()
-    desenhos['fp']['predicoes'].clear()
-    desenhos['vp']['anotacoes'].clear()
-    desenhos['vp']['predicoes'].clear()
+                centro_anotacao = [round(value) for value in calcular_centro(anotacao)]
+                centro_predicao = [round(value) for value in calcular_centro(predicao)]
+                imagem = cv2.line(imagem, centro_anotacao, centro_predicao, cor_de_linha, espessura, cv2.LINE_8)
+            elif not anotacao and predicao:
+                xmin, ymin, xmax, ymax = [round(value) for value in predicao[:4]]
+                imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_predicao_fp, espessura, cv2.LINE_8)
+
+        anotacoes = desenhos['fn']['anotacoes']
+        for anotacao in anotacoes:
+            xmin, ymin, xmax, ymax = anotacao[:4]
+            imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_anotacao_fn, espessura, cv2.LINE_8)
+
+        if not exists(diretorio_de_saida):
+            makedirs(diretorio_de_saida, exist_ok=True)
+
+        cv2.imwrite(join(diretorio_de_saida, nome_imagem), imagem)
+        desenhos['fn']['anotacoes'].clear()
+        desenhos['fn']['predicoes'].clear()
+        desenhos['fp']['anotacoes'].clear()
+        desenhos['fp']['predicoes'].clear()
+        desenhos['vp']['anotacoes'].clear()
+        desenhos['vp']['predicoes'].clear()
 
 
 def existe_bbox(lista: list[list[Union[int, float]]]) -> bool:
