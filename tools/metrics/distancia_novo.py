@@ -5,7 +5,7 @@ from os import environ, makedirs
 from os.path import exists, join
 from typing import Optional, Union
 
-from numpy import array, mean, sqrt, zeros
+from numpy import argmin, array, inf, mean, sqrt, unravel_index, zeros
 from pandas import DataFrame, concat
 from scipy.optimize import linear_sum_assignment
 from torch import float32, int64, tensor
@@ -31,6 +31,9 @@ cor_de_predicao_vp = (255, 0, 0)
 cor_de_predicao_fp = (0, 0, 255)
 cor_de_linha = (0, 0, 0)
 espessura = 2
+
+metricas = ['distancia_minima', 'linear_sum_assigment']
+tipo_de_metrica: str
 
 
 def aplicar_batched_nms(predicoes: Union[dict, list]) -> Optional[list]:
@@ -80,6 +83,21 @@ def calcular_distancia(
         ponto_b: tuple[Union[int, float], Union[int, float]]
 ) -> float:
     return sqrt((ponto_b[0] - ponto_a[0]) ** 2 + (ponto_b[1] - ponto_a[1]) ** 2)
+
+
+def calcular_distancias_minimas_na_matriz(matriz_de_distancias: array) -> tuple[list[int], list[int]]:
+    linhas, colunas = list(), list()
+    menor_lado = min(matriz_de_distancias.shape)
+    while len(linhas) < menor_lado:
+        indices_do_menor_valor = argmin(matriz_de_distancias)
+        linha, coluna = unravel_index(indices_do_menor_valor, matriz_de_distancias.shape)
+
+        linhas.append(linha)
+        colunas.append(coluna)
+
+        matriz_de_distancias[linha, :] = inf
+        matriz_de_distancias[:, coluna] = inf
+    return linhas, colunas
 
 
 def calcular_metrica_nas_imagens_com_categoria(
@@ -215,7 +233,12 @@ def calcular_metricas_nas_subimagens_com_categoria(
                 for j, centro_predicao in enumerate(centros_de_predicoes_por_categoria):
                     distancia = calcular_distancia(centro_anotacao, centro_predicao)
                     matriz_de_distancias[i][j] = distancia
-            row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
+
+            if tipo_de_metrica == 'linear_sum_assigment':
+                row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
+            else:
+                row_ind, col_ind = calcular_distancias_minimas_na_matriz(matriz_de_distancias)
+
             for row, col in zip(row_ind, col_ind):
                 xmin, ymin, xmax, ymax = anotacoes[categoria][row]
                 x, y = centros_de_predicoes_por_categoria[col]
@@ -258,7 +281,11 @@ def calcular_metricas_por_subimagem_sem_categoria(anotacoes: list, predicoes: li
     falsos_positivos = 0
     verdadeiros_positivos = 0
     matriz_de_distancias = criar_matriz_de_distancias(centros_anotacoes, centros_predicoes)
-    row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
+
+    if tipo_de_metrica == 'linear_sum_assigment':
+        row_ind, col_ind = linear_sum_assignment(matriz_de_distancias)
+    else:
+        row_ind, col_ind = calcular_distancias_minimas_na_matriz(deepcopy(matriz_de_distancias))
     for row, col in zip(row_ind, col_ind):
         xmin, ymin, xmax, ymax = anotacoes[row]
         x, y = centros_predicoes[col]
@@ -353,9 +380,21 @@ def criar_matriz_de_distancias(
 
 def desenhar(nome_imagem: str) -> None:
     if com_categoria:
-        diretorio_de_saida = join(environ.get('DIRETORIO_DE_SAIDA'), tipo_de_imagem, 'com_categoria', tipo_de_resultado)
+        diretorio_de_saida = join(
+            environ.get('DIRETORIO_DE_SAIDA'),
+            tipo_de_imagem,
+            'com_categoria',
+            tipo_de_resultado,
+            tipo_de_metrica
+        )
     else:
-        diretorio_de_saida = join(environ.get('DIRETORIO_DE_SAIDA'), tipo_de_imagem, 'sem_categoria', tipo_de_resultado)
+        diretorio_de_saida = join(
+            environ.get('DIRETORIO_DE_SAIDA'),
+            tipo_de_imagem,
+            'sem_categoria',
+            tipo_de_resultado,
+            tipo_de_metrica
+        )
 
     diretorio_imagens = environ.get('DIRETORIO_DE_IMAGENS')
     if tipo_de_imagem == 'subimagem':
@@ -901,6 +940,7 @@ def verificar_interseccao_entre_bbox_e_subimagem(
 def main():
     global tipo_de_imagem
     global com_categoria
+    global tipo_de_metrica
     global tipo_de_resultado
 
     anotacoes_imagens = carregar_json(environ.get('ARQUIVO_ANOTACOES_IMAGENS'))
@@ -923,43 +963,49 @@ def main():
 
     deteccoes_imagens = unir_deteccoes_das_subimagens(deteccoes_subimagens)
 
-    tipo_de_imagem = 'imagem'
-    com_categoria = False
-    tipo_de_resultado = 'deteccao'
-    print('Pontuação nas imagens considerando apenas a localização e ignorando as categorias')
-    p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
-    print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
-    tipo_de_resultado = 'segmentacao'
-    p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
-    print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
+    for metrica in metricas:
+        tipo_de_metrica = metrica
 
-    com_categoria = True
-    tipo_de_resultado = 'deteccao'
-    print('Pontuação nas imagens considerando localização e categorias')
-    p, r, f = calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
-    print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
-    tipo_de_resultado = 'segmentacao'
-    p, r, f = calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
-    print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
+        print('=' * 100)
+        print(f'Métrica: {tipo_de_metrica}')
+        tipo_de_imagem = 'imagem'
+        com_categoria = False
+        tipo_de_resultado = 'deteccao'
+        print('Pontuação nas imagens considerando apenas a localização e ignorando as categorias')
+        p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, deteccoes_imagens)
+        print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+        tipo_de_resultado = 'segmentacao'
+        p, r, f = calcular_metrica_nas_imagens_sem_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
+        print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
 
-    tipo_de_imagem = 'subimagem'
-    com_categoria = False
-    tipo_de_resultado = 'deteccao'
-    print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
-    p, r, f = calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens)
-    print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
-    tipo_de_resultado = 'segmentacao'
-    p, r, f = calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
-    print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
+        com_categoria = True
+        tipo_de_resultado = 'deteccao'
+        print('Pontuação nas imagens considerando localização e categorias')
+        p, r, f = calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, deteccoes_imagens)
+        print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+        tipo_de_resultado = 'segmentacao'
+        p, r, f = calcular_metrica_nas_imagens_com_categoria(anotacoes_imagens, predicoes_segmentacao_imagens)
+        print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
 
-    com_categoria = True
-    tipo_de_resultado = 'deteccao'
-    print('Pontuação nas subimagens considerando localização e categorias')
-    p, r, f = calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens)
-    print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
-    tipo_de_resultado = 'segmentacao'
-    p, r, f = calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
-    print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+        tipo_de_imagem = 'subimagem'
+        com_categoria = False
+        tipo_de_resultado = 'deteccao'
+        print('Pontuação nas subimagens considerando apenas a localização e ignorando as categorias')
+        p, r, f = calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, deteccoes_subimagens)
+        print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+        tipo_de_resultado = 'segmentacao'
+        p, r, f = calcular_metricas_nas_subimagens_sem_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
+        print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}', end='\n\n')
+
+        com_categoria = True
+        tipo_de_resultado = 'deteccao'
+        print('Pontuação nas subimagens considerando localização e categorias')
+        p, r, f = calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, deteccoes_subimagens)
+        print('Detecção:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+        tipo_de_resultado = 'segmentacao'
+        p, r, f = calcular_metrica_nas_subimagens_com_categoria(anotacoes_subimagens, predicoes_segmentacao_subimagens)
+        print('Segmentação:', f'Precisão: {p}', f'Revocação: {r}', f'F_score: {f}')
+        print()
 
 
 if __name__ == '__main__':
