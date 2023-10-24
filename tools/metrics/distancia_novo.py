@@ -14,6 +14,7 @@ import cv2
 
 
 CATEGORIAS = tuple(range(1, int(environ.get('QUANTIDADE_DE_CATEGORIAS')) + 1))
+DEPURAR = bool(environ.get('DEPURAR'))
 DISTANCIA_DA_AREA_DE_UNIAO = float(environ.get('DISTANCIA_DA_AREA_DE_UNIAO'))
 DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS = float(environ.get('DISTANCIA_EM_PIXELS_ENTRE_PONTOS_MEDIOS'))
 SALVAR_IMAGENS = bool(eval(environ.get('SALVAR_IMAGENS')))
@@ -403,19 +404,23 @@ def desenhar(nome_imagem: str) -> None:
             diretorio_imagens = environ.get('DIRETORIO_DE_SUBIMAGENS')
 
         imagem = cv2.imread(join(diretorio_imagens, nome_imagem))
+        mostrar_imagem(imagem, nome_imagem)
 
         anotacoes = desenhos['vp']['anotacoes']
         predicoes = desenhos['vp']['predicoes']
         for anotacao, predicao in zip(anotacoes, predicoes):
             xmin, ymin, xmax, ymax = anotacao[:4]
             imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_anotacao_vp, espessura, cv2.LINE_8)
+            mostrar_imagem(imagem, nome_imagem)
 
             xmin, ymin, xmax, ymax = [round(value) for value in predicao[:4]]
             imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_predicao_vp, espessura, cv2.LINE_8)
+            mostrar_imagem(imagem, nome_imagem)
 
             centro_anotacao = [round(value) for value in calcular_centro(anotacao)]
             centro_predicao = [round(value) for value in calcular_centro(predicao)]
             imagem = cv2.line(imagem, centro_anotacao, centro_predicao, cor_de_linha, espessura, cv2.LINE_8)
+            mostrar_imagem(imagem, nome_imagem)
 
         # atualmente, os falsos positivos são considerados apenas quando o centro de uma predição está fora da box da
         # anotação correspondente. Isso acontece pois não há falsos positivos sem anotações correspondentes, uma vez que
@@ -426,21 +431,26 @@ def desenhar(nome_imagem: str) -> None:
             if anotacao and predicao:
                 xmin, ymin, xmax, ymax = anotacao[:4]
                 imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_anotacao_vp, espessura, cv2.LINE_8)
+                mostrar_imagem(imagem, nome_imagem)
 
                 xmin, ymin, xmax, ymax = [round(value) for value in predicao[:4]]
                 imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_predicao_fp, espessura, cv2.LINE_8)
+                mostrar_imagem(imagem, nome_imagem)
 
                 centro_anotacao = [round(value) for value in calcular_centro(anotacao)]
                 centro_predicao = [round(value) for value in calcular_centro(predicao)]
                 imagem = cv2.line(imagem, centro_anotacao, centro_predicao, cor_de_linha, espessura, cv2.LINE_8)
+                mostrar_imagem(imagem, nome_imagem)
             elif not anotacao and predicao:
                 xmin, ymin, xmax, ymax = [round(value) for value in predicao[:4]]
                 imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_predicao_fp, espessura, cv2.LINE_8)
+                mostrar_imagem(imagem, nome_imagem)
 
         anotacoes = desenhos['fn']['anotacoes']
         for anotacao in anotacoes:
             xmin, ymin, xmax, ymax = anotacao[:4]
             imagem = cv2.rectangle(imagem, (xmin, ymin), (xmax, ymax), cor_de_anotacao_fn, espessura, cv2.LINE_8)
+            mostrar_imagem(imagem, nome_imagem)
 
         if not exists(diretorio_de_saida):
             makedirs(diretorio_de_saida, exist_ok=True)
@@ -459,6 +469,18 @@ def existe_bbox(lista: list[list[Union[int, float]]]) -> bool:
         if elemento:
             return True
     return False
+
+
+def mostrar_imagem(img, nome_imagem) -> None:
+    if tipo_de_imagem == 'imagem':
+        altura, largura = img.shape[:2]
+        nova_altura = altura // 3
+        nova_largura = largura // 3
+        img = cv2.resize(img, (nova_largura, nova_altura))
+    if DEPURAR:
+        cv2.imshow(nome_imagem, img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
 def obter_areas_de_uniao(
