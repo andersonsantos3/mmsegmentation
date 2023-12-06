@@ -97,7 +97,7 @@ def exibir(
             # im = cv2.resize(im, dim, interpolation=cv2.INTER_AREA)
 
             # imshow(im, nome_imagem)
-            base = '/home/anderson/PycharmProjects/mmsegmentation/work_dirs/v3.0.0/b3/ann_seg_bbox'
+            base = '/home/anderson/PycharmProjects/mmsegmentation/work_dirs/v3.0.1/b3/ann_seg_bbox'
             imwrite(im, join(base, nome_imagem + '.jpg'))
             # cv2.waitKey(0)
             # cv2.destroyAllWindows()

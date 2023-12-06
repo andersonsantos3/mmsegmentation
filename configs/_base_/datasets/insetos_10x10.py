@@ -1,6 +1,6 @@
 # dataset settings
 dataset_type = 'Insetos'
-versao_dataset = 'v3.0.0'
+versao_dataset = 'v3.0.1'
 
 # quando mudar para a versão 2.0.0, alterar também a quantidade de classes no arquivo de configuração e em insetos.py
 
